@@ -1,11 +1,18 @@
 
+MyControlsFactory._styleManager = null;
+
+MyControlsFactory.USERS_DATA = [];
+MyControlsFactory.USERS_DATA_ARRAY = {};
+
 MyControlsFactory.CONTROLS = {
-  "PANEL":       "PANEL",
+	"PANEL":       "PANEL",
 	"SCROLL_PANEL": "SCROLL_PANEL",
+	"MAP_BROWSER": "MAP_BROWSER",
 	"PROGRESS_BAR":       "PROGRESS_BAR",
 	"BUTTON":      "BUTTON",
 	"LABEL":       "LABEL",
 	"TEXT_BOX":    "TEXT_BOX",
+	"TEXT_AREA":    "TEXT_AREA",
 	"DATE_PICKER": "DATE_PICKER",
 	"CHECK_BOX":   "CHECK_BOX",
 	"COMBO_BOX":   "COMBO_BOX"
@@ -14,10 +21,12 @@ MyControlsFactory.CONTROLS = {
 MyControlsFactory.FACTORY = {
 	"PANEL":              function(opts){return new MyControlsFactory.MyPanel(opts);},
 	"SCROLL_PANEL":       function(opts){return new MyControlsFactory.ScrollPanel(opts);},
+	"MAP_BROWSER":        function(opts){return new MyControlsFactory.MapBrowser(opts);},
 	"DATE_PICKER":        function(opts){return new MyControlsFactory.DatePicker(opts);},
 	"PROGRESS_BAR":       function(opts){return new MyControlsFactory.ProgressBar(opts);},
 	"LABEL":              function(opts){return new MyControlsFactory.Label(opts);},
 	"TEXT_BOX":           function(opts){return new MyControlsFactory.TextBox(opts);},
+	"TEXT_AREA":          function(opts){return new MyControlsFactory.TextArea(opts);},
 	"BUTTON":             function(opts){return new MyControlsFactory.Button(opts);},
 	"CHECK_BOX":          function(opts){return new MyControlsFactory.CheckBox(opts);},
 	"COMBO_BOX":          function(opts){return new MyControlsFactory.ComboBox(opts);}
@@ -45,17 +54,25 @@ MyControlsFactory.DIVS_TYPES = {
 MyControlsFactory.MyControls = function(opt){
 	var _this = this;
 	
+	this._opt = opt;
+	
 	this._style_prefix = this.getName();
 		
 	( opt.parent != undefined ) ? this._parent = $("#" + opt.parent) : this._parent = null;
 		
-	this._styleManager = null;
+	//this._styleManager = null;
 	this._curStyle = null;
 	
 	this._bgColor = this.getCurStyle()[ this._style_prefix + StyleManager.STYLE_NAMES.COLOR ];		
 	
 	this._bgColor_opt = opt.bgColor;
 	this._opacity     = opt.opacity;
+	
+	//Вызывается перед удалением элемента
+	this._befor_deleting = opt.befor_deleting;
+	
+	//Сохранить параметры во время сессии
+	this._save     = opt.save;
 	
 	this._JQUERY_DOM = [];
 	this._DOM = [];
@@ -142,11 +159,7 @@ MyControlsFactory.MyControls.prototype.inBound = function(panel) {
 	
 	var koeff_0 = this.getCurPos()[0] > panel.getCurPos()[0];
 	var koeff_1 = (this.getCurPos()[0] + this.getSize()[1]) < (panel.getCurPos()[0] + panel.getSize()[1]);
-	
-	//console.log("koeff_0 = " + koeff_0);
-	//console.log("koeff_1 = " + koeff_1);
-	//console.log("koeff_end = " + koeff_0 && koeff_1);
-				   
+			   
     return koeff_0 && koeff_1;
 }
 	
@@ -180,9 +193,6 @@ MyControlsFactory.MyControls.prototype.doAnimateHide = function(opt, time){
 	
 	for(var i in dom){
 		var cur_el = dom[i];
-		
-		//opt.top  += this._loc_offsets[i][0];
-		//opt.left += this._loc_offsets[i][1];
 		
 		cur_el.animate(
 			opt,
@@ -265,6 +275,10 @@ MyControlsFactory.MyControls.prototype.append = function() {
 MyControlsFactory.MyControls.prototype.remove = function(opt) {
 	var dom = this.getJQUERYDOM();
 
+	if (typeof this._befor_deleting == "function"){
+		this._befor_deleting();		
+	}
+														
 	for(var i in dom){
 		dom[i].remove();		
 	}	
@@ -278,17 +292,17 @@ MyControlsFactory.MyControls.setParent = function(parent){
 
 //Создание StealManager'a
 MyControlsFactory.MyControls.createStealManager = function(opt){
-	MyControlsFactory.MyControls._styleManager = new StyleManager(opt);		
+	MyControlsFactory._styleManager = new StyleManager(opt);		
 }
 
 //Вернуть _curStyle
 MyControlsFactory.MyControls.prototype.getCurStyle = function(){
-	return( MyControlsFactory.MyControls._styleManager.getCurStyle() );			
+	return( MyControlsFactory._styleManager.getCurStyle() );			
 }
 
 //Вернуть начение стиля
 MyControlsFactory.MyControls.prototype.getStealValue = function(style_name){	
-	return MyControlsFactory.MyControls._styleManager.getStealValue( this._style_prefix, style_name);				
+	return MyControlsFactory._styleManager.getStealValue( this._style_prefix, style_name);				
 }
 
 MyControlsFactory.MyControls.GUID = function()
@@ -410,6 +424,7 @@ MyControlsFactory.MyPanel = function(opt){
 	this._modal_state = false;
 	this._loadingWaiting_state = false;
 	this._waiting_message = null;
+	this._waiting_button = null;
 	
 	this._childs = [];
 	
@@ -438,12 +453,14 @@ MyControlsFactory.MyPanel.prototype.getZIndex = function() {
 
 //setModalState
 MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting, opt) {
+	var _this = this;
+	
 	var el = this.getJQUERYDOM()[0];
 	
 	var img_w = 100;
 	var img_h = 100;
 		
-	var cur_pos = this.getCurPos();
+	var cur_pos  = this.getCurPos();
 	var cur_size = this.getSize();
 	
 	var message_width = this.getSize()[0] - 10;
@@ -451,11 +468,11 @@ MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting,
 	var img_top  = (cur_size[1] - img_h)/2 + 15;
 	var img_left = (cur_size[0] - img_w)/2;
 	
+	var z_index = 1000000;
+	
 	if (isWaiting == true){
 		if (this._loadingWaiting_state == false){		
 			this._old_z_index = el.css("z-index");
-			
-			var z_index = 1000000;
 			
 			el.css("z-index", z_index);	
 			
@@ -465,7 +482,7 @@ MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting,
 			
 			
 			var img = $("<img></img>").
-				attr("src", "img/" + "ajax-loader.gif" + "?" + (Math.random()*100).toString()).
+				attr("src", MyControlsFactory.BUFFER_PATH + "img/" +"ajax-loader.gif" + "?" + (Math.random()*100).toString()).
 				attr("class", "container").
 			    css("top", img_top).
 				css("left", img_left).
@@ -474,17 +491,49 @@ MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting,
 					
 			el.append(img);
 			
-			this._waiting_message = $("<div></div>").				
-				attr("class", "textConteinerWaitingAlert").
-				text(opt.message).
-			    css("top", img_top - 30).
-				css("left", 5).
-				css("width", message_width).
-				css("height", 30);
-				
-			el.append(this._waiting_message);
+			if (opt != undefined){				
+				this._waiting_message = $("<div></div>").				
+					attr("class", "textConteinerWaitingAlert").
+					text(opt.message).
+				    css("top", img_top - 30).
+					css("left", 5).
+					css("width", message_width).
+					css("height", 30);
+					
+				el.append(this._waiting_message);
 			
-												    
+				this._waiting_button = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.BUTTON, 
+													{"enabled": true,
+												    "enterOutFun": [function(){}, function(){}
+												    ],
+												    "click": function(){	
+												    	
+												    	if (( opt.stop_fun!= null) && ( (typeof opt.stop_fun) == "function")){
+															opt.stop_fun();
+														}
+														
+												    	_this.setWaitingLoadingState(false, null);													    												    								    	
+												    },
+												    "text": "Остановить",
+												    "pos": [cur_pos[0] + img_top + 100, cur_pos[1] + img_left],
+												    "size": [110, 30]});
+															    
+				this._waiting_button.append();
+				
+				this.addToPanel(this._waiting_button);
+				
+				var button_elements = this._waiting_button.getJQUERYDOM();
+				
+				for(var ii in button_elements){
+					button_elements[ii].css("z-index", z_index);	
+				}
+			}
+			/*
+			_.each(button_elements, function(value){	
+				value.css("z-index", z_index);					
+			});	
+			*/
+											    
 			this._loadingWaiting_state = true;
 		}		 		
 	}else{	
@@ -492,8 +541,14 @@ MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting,
 			
 			el.find("img").remove();
 			
-			this._waiting_message.remove();
-								
+			if (this._waiting_message != null){	
+				this._waiting_message.remove();			
+			}
+				
+			if (this._waiting_button != null){	
+				this._waiting_button.remove();			
+			}
+							
 			el.css("z-index", this._old_z_index);
 			
 			var bg_color = this._bgColor_opt;
@@ -680,9 +735,6 @@ MyControlsFactory.MyPanel.prototype.hide = function(opt) {
 	for(var i in this._childs){
 		var cur_child = this._childs[i];		
 		
-		//console.log(cur_child._loc_offsets.length);
-		//console.log(cur_child._loc_offsets);
-		
 		cur_child.doAnimateHide({"top":  parent_pos[0],
 						     	"left":  parent_pos[1],
 						     	"width": _this._minWidth},
@@ -733,8 +785,14 @@ MyControlsFactory.MyPanel.prototype.addToPanel = function(child) {
 		for(var i in child.getJQUERYDOM()){
 			var cur_el = child.getJQUERYDOM()[i];
 			
-			cur_el.css("z-index", modal_z_index + 100);
+			cur_el.css("z-index", modal_z_index - 10);
 		}	
+	}else{
+		for(var i in child.getJQUERYDOM()){
+			var cur_el = child.getJQUERYDOM()[i];
+			
+			//cur_el.css("z-index", modal_z_index + 10);
+		}
 	}	
 }
 
@@ -815,15 +873,21 @@ MyControlsFactory.TextBox.prototype.create = function() {
 		
 	var id = MyControlsFactory.MyControls.GUID();
 
+	var value = this._text;
+
+	if (this._save == true){
+		value = MyControlsFactory._styleManager.getState();		
+	}
+
 	//Контейнер с контентом
 	var content = $("<input></input>").
 			attr("id", id + MyControlsFactory.DIVS_TYPES.CONTENT ).			
 			attr("name", id + MyControlsFactory.DIVS_TYPES.CONTENT ).	
 			attr("type", "text").
-			attr("value", this._text).
+			attr("value", value).
 	        attr("class", "inputConteiner").		           	      
 	        css("top", this._top).
-			css("left", this._left).
+			css("left", this._left + 5).
 			css("width", this._width - 10).
 			css("height", this._height - 10).
 			hover(function(){
@@ -831,6 +895,8 @@ MyControlsFactory.TextBox.prototype.create = function() {
 			},function(){
 				_this.mouseOut();
 			});
+	
+	this._loc_offsets = [[0,0], [0, 5]];	
 		
 	//"Прозрачный" контейнер	
 	var cont_first = $("<div></div>").	
@@ -850,6 +916,16 @@ MyControlsFactory.TextBox.prototype.create = function() {
 			  this.getStealValue(StyleManager.STYLE_NAMES.SHADOW_SHIFTS));	
 	
 	return [cont_first, content];
+}
+
+//Удалить
+MyControlsFactory.TextBox.prototype.remove = function() {	
+	
+	if (this._save == true){
+		MyControlsFactory._styleManager.saveState(this.value());				
+	}
+	
+	MyControlsFactory.TextBox.superclass.remove.apply(this, arguments);	
 }
 
 //Событие при наведении мыши
@@ -879,12 +955,12 @@ MyControlsFactory.TextBox.prototype.mouseOut = function(opt, time){
 
 //Вернуть значение
 MyControlsFactory.TextBox.prototype.value = function(){			
-	return this._JQUERY_DOM[1].attr("value");		
+	return this._JQUERY_DOM[1].prop("value");		
 }
 
 //Установить значение
 MyControlsFactory.TextBox.prototype.setValue = function(val){			
-	return this._JQUERY_DOM[1].attr("value", val);		
+	return this._JQUERY_DOM[1].prop("value", val);		
 }
 //************************************************************************************************************************************************
 MyControlsFactory.Button = function(opt){	
@@ -1130,15 +1206,39 @@ MyControlsFactory.CheckBox = function(opt){
 	
 	MyControlsFactory.CheckBox.superclass.constructor.apply(this, arguments);	
 	
+	
+		
+	var value = opt.checked;
+		
+	if (this._save == true){
+		var value = MyControlsFactory._styleManager.getState();	
+		
+		if (value == null){
+			value = this._checked;
+		}
+	}
+	
+	this._checked = value;
+	
+	
+		
 	this.setChecked(this._checked);
 	
-	var dom = this.getJQUERYDOM();	
-	StyleManager.setBGOpacity(dom[0], 
-				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
-				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));		
+	var dom = this.getJQUERYDOM();					 	
 }
 
 MyControlsFactory.MyControls.extend(MyControlsFactory.CheckBox, MyControlsFactory.MyControls);
+
+//Удалить
+MyControlsFactory.CheckBox.prototype.remove = function() {	
+	
+	if (this._save == true){
+	
+		MyControlsFactory._styleManager.saveState(this.getChecked());				
+	}
+	
+	MyControlsFactory.CheckBox.superclass.remove.apply(this, arguments);	
+}
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.CheckBox.prototype.getName = function() {		
@@ -1148,36 +1248,36 @@ MyControlsFactory.CheckBox.prototype.getName = function() {
 //Создать CheckBox
 MyControlsFactory.CheckBox.prototype.create = function() {		
 	var _this = this;
-		
+	
 	var id = MyControlsFactory.MyControls.GUID();
 	
 	//Контейнер с контентом
 	var check_box_cont = $("<div></div>").
 		attr("id", id + MyControlsFactory.DIVS_TYPES.CONTENT).
-		attr("class", "textConteiner").
-		css("top", this._top + 3).
+		attr("class", "inputConteiner").
+		css("top", this._top).
 		css("left", this._left).
 		css("width", this._width  - 10).
 		css("height", this._height - 10);	
 	
-	this._loc_offsets = [[0,0], [3,0], [0,0]]
+	this._loc_offsets = [[0,0], [0,0], [0,0]]
 		
 	var check_box = $("<input></input>").		
 		attr("class", "container").
 		attr("type", "checkbox").		
-		css("top",  3).
-		css("left", 3);
+		css("top",  8).
+		css("left", 5);
 	
 	var check_box_text = $("<div></div>").					
-	        attr("class", "checkBoxText container").
+	        attr("class", "checkBoxText  inputConteiner container").
 	        text(this._text).
-	        css("top", 3).
+	        css("top", 0).
 			css("left", 25).
 			css("width", this._width - 30).
 			css("height", this._height - 10);
 	
-	check_box_cont.append(check_box).
-				   append(check_box_text);
+	check_box_cont.append(check_box);
+	check_box_cont.append(check_box_text);
 				   				   				   				   	
 	//"Прозрачный" контейнер	
 	var cont_first = $("<div></div>").	
@@ -1235,7 +1335,7 @@ MyControlsFactory.CheckBox.prototype.create = function() {
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
 				 StyleManager.TRANSPARENT_OPACITY);					      
 	StyleManager.setRadius(cont_last, StyleManager.STANDART_CORNER_RADIUS);	
-		
+	
 	return [cont_first, check_box_cont, cont_last];
 }
 
@@ -1256,30 +1356,28 @@ MyControlsFactory.CheckBox.prototype.getValue = function(){
 //Установить статус CheckBox
 MyControlsFactory.CheckBox.prototype.setChecked = function(isChecked){
 	var dom = this.getJQUERYDOM();
-	
+		
 	var check_box = dom[1].find("input");
 	
 	if (isChecked == false){
 		check_box.removeAttr("checked");
-	}else{
-		check_box.attr("checked", isChecked);
-	}
-	
-	this._checked = isChecked;
-			
-	dom[1].removeClass("inputConteiner_over");
-	
-	StyleManager.setBGOpacity(dom[0], 
-				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
-				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));			
 		
-	if (this._checked == true ){					
-		dom[1].addClass("inputConteiner_over");		
+		StyleManager.setBGOpacity(dom[0], 
+				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
+				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));
+	}else{
+		check_box.prop("checked", isChecked);
+		
+		dom[1].removeClass("inputConteiner");	
+		dom[1].addClass("inputConteiner_over");
+		
+		dom[1].find(".checkBoxText").removeClass("inputConteiner");	
+		dom[1].find(".checkBoxText").addClass("inputConteiner_over");
 		
 		StyleManager.setGradient(dom[0], 
-				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_END), 
 				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
-				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));		
+				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_END), 
+				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));	
 	}	
 }
 
@@ -1289,9 +1387,7 @@ MyControlsFactory.CheckBox.prototype.getChecked = function(isChecked){
 }
 	
 //Событие при клике мыши
-MyControlsFactory.CheckBox.prototype.mouseClick = function(opt, time){
-	var dom = this.getJQUERYDOM();
-	
+MyControlsFactory.CheckBox.prototype.mouseClick = function(){	
 	this._checked = !this._checked;	
 	
 	this.setChecked(this._checked);
@@ -1307,14 +1403,12 @@ MyControlsFactory.CheckBox.prototype.mouseEnter = function(opt, time){
 //Событие при наведении мыши
 MyControlsFactory.CheckBox.prototype.mouseEnterText = function(){
 	var dom = this.getJQUERYDOM();
-	
+	//checkBoxText
 	dom[1].removeClass("inputConteiner");	
 	dom[1].addClass("inputConteiner_over");
 	
-	StyleManager.setGradient(dom[0], 
-				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
-				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_END), 
-				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));	
+	dom[1].find(".checkBoxText").removeClass("inputConteiner");	
+	dom[1].find(".checkBoxText").addClass("inputConteiner_over");	
 }
 
 //Событие при уходе мыши
@@ -1331,9 +1425,8 @@ MyControlsFactory.CheckBox.prototype.mouseOutText = function(opt, time){
 	dom[1].addClass("inputConteiner");	
 	dom[1].removeClass("inputConteiner_over");
 	
-	StyleManager.setBGOpacity(dom[0], 
-				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
-				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));	
+	dom[1].find(".checkBoxText").removeClass("inputConteiner_over");	
+	dom[1].find(".checkBoxText").addClass("inputConteiner");	
 }
 //************************************************************************************************************************************************
 MyControlsFactory.ComboBox = function(opt){
@@ -1410,8 +1503,9 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 			css("width", this._width).
 			css("height", this._height);	
 	
+	
 	var img = $("<img></img>").
-			attr("src", "img/combobox1_0.png?" + (Math.random()*100).toString()).
+			attr("src", MyControlsFactory.BUFFER_PATH + "img/combobox1_0.png?" + (Math.random()*100).toString()).
 			attr("class", "container").
 		    css("top", 6).
 			css("right", 4);
@@ -1461,11 +1555,9 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 				 StyleManager.TRANSPARENT_OPACITY);					      
 	StyleManager.setRadius(cont_last, StyleManager.STANDART_CORNER_RADIUS);	
 		
-		
-		
-	var options_length = 0;
+	var options_length = 0;//_.size(this._options);
 	
-	for(var i in this._options) if (this._options.hasOwnProperty(i)) {
+	for(var ii in this._options){
 		options_length++;
 	}
 	
@@ -1474,10 +1566,7 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 	var panel_height = options_length * (30 + this_shift) + 7;
 		
 	var pos_y = this._top + 35;		
-	
-	var index = 0;
-	var index_loc = 0;
-	
+		
 	var shift_max_index = Math.ceil(options_length / this._columns);
 	
 	this._childs_panel = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.PANEL, 
@@ -1490,10 +1579,107 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 													 	
 	this._childs_panel._loc_offsets = [[30, 0]];		
 	
+	this._childs_panel.append();
+		
 	var shift_index = 0;
+	var index_loc = 0;	
+	var index = 0;
 	
-	for(var i in this._options) if (this._options.hasOwnProperty(i)) {
-		var cur_child = this._options[i];
+	for(var key in this._options){
+		var value = this._options[key];
+		
+		var elem = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.CHECK_BOX, 
+								{"checked": false,
+							    "do": function(){							    	
+							    		_this.setAllOptionsChecked(this, false);
+							    		
+							    		var value = this.getValue();
+							    		
+							    		_this.close();								    									    																			    							    
+										_this.setValue(value);	
+										
+										var key = _this.getKeyByValue(value);
+										
+										_this._selected({
+											"key": key,
+											"value": value
+										});														    								    																	    								    								    
+							    },
+							    "enterOutFun": [
+							    	function(){},function(){}],
+							    "text": value,
+							    "pos": [pos_y + index_loc*(30 + this_shift), this._left + 5 + shift_index * (this._width - 5)],
+							    "size": [this._width - 10, 30]});
+							    
+	    this._childs.push(elem);
+	    
+	    this._childs_panel.addToPanel(elem);	    	   	    	    
+	    
+	    index++;
+	    index_loc++;
+	    
+	    if (index == shift_max_index){
+	    	shift_max_index += shift_max_index;	    	
+	    	
+	    	shift_index++;	    	
+	    	index_loc = 0;
+	    }	
+	}
+		
+	return [cont_first, content, cont_last];
+}
+
+//Установить опции
+MyControlsFactory.ComboBox.prototype.setOptions = function(opt, columns){	
+	var _this  = this;
+	
+	this._columns = columns;
+	
+	this._options = opt;
+	
+	this._childs = [];	
+	this._keys = [];//_.keys(opt);	
+	
+	for (var ii in opt){
+		
+		this._keys.push(ii);
+	}
+	
+	var options_length = 0;//_.size(opt);
+	
+	for (var key in opt){
+		options_length++;
+	}
+	
+	var this_shift = 2;
+	
+	var panel_height = options_length * (30 + this_shift) + 7;
+			
+	var shift_max_index = Math.ceil(options_length / this._columns);
+	
+	if(this._childs_panel == null){
+		this._childs_panel.remove();
+	}
+	
+	var pos = this.getCurPos();
+	
+	var pos_y = pos[0] + 35;		
+	
+	this._childs_panel = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.PANEL, 
+							  {"bgColor": "#AAAAAA",
+							   "maximize": false,
+							   "pos": [pos[0] + 30, pos[1]],
+							   "size": [(this._width + 0) * this._columns, shift_max_index * (30 + this_shift) + 7],
+							   "minSize": [this._width, 0]});	
+	
+	this._childs_panel._loc_offsets = [[30, 0]];
+			
+	var shift_index = 0;
+	var index_loc = 0;	
+	var index = 0;
+	
+	for(var key in this._options){
+		var value = this._options[key];
 		
 		var elem = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.CHECK_BOX, 
 								{"parent": this._parent_name,							    
@@ -1515,8 +1701,8 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 							    },
 							    "enterOutFun": [
 							    	function(){},function(){}],
-							    "text": cur_child,
-							    "pos": [pos_y + index_loc*(30 + this_shift), this._left + 5 + shift_index * (this._width - 5)],
+							    "text": value,
+							    "pos": [pos_y + index_loc*(30 + this_shift), pos[1] + 5 + shift_index * (this._width - 5)],
 							    "size": [this._width - 10, 30]});
 							    
 	    this._childs.push(elem);
@@ -1526,16 +1712,38 @@ MyControlsFactory.ComboBox.prototype.create= function() {
 	    index++;
 	    index_loc++;
 	    
-	    if (shift_max_index == index){
-	    	shift_max_index += shift_max_index;
+	    if (index == shift_max_index){
+	    	shift_max_index += shift_max_index;	    	
 	    	
-	    	shift_index++;
-	    	
+	    	shift_index++;	    	
 	    	index_loc = 0;
-	    }	    
+	    }
 	}
+	
+	//Добавить панель чайлдов	
+	//this.getChildsPanel().append();
+	this._childs_panel.append();
+	
+	for(var ii in this._childs){
+		this._childs[ii].append();
+	}
+	//this._childs_panel.append();
+	
+	this.getJQUERYDOM()[1].text(this._options[this._keys[0]]);
+	
+	if(this._isExpand == true){
+		var dom = this.getJQUERYDOM();	
 		
-	return [cont_first, content, cont_last];
+		dom[0].removeClass("gradient_click");	
+		dom[0].removeClass("gradient_over");	
+		
+		dom[0].find("img").attr("src", MyControlsFactory.BUFFER_PATH + "img/combobox1_0.png?" + (Math.random()*100).toString());	
+	
+		dom[1].addClass("textConteiner");	
+		dom[1].removeClass("textConteiner_over");
+		
+		this._isExpand = false;
+	}	
 }
 
 //Вернуть панель чайлдов
@@ -1572,7 +1780,7 @@ MyControlsFactory.ComboBox.prototype.close = function(){
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
 				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));
 				 
-		dom[0].find("img").attr("src", "img/combobox1_0.png?" + (Math.random()*100).toString());
+		dom[0].find("img").attr("src", MyControlsFactory.BUFFER_PATH + "img/combobox1_0.png?" + (Math.random()*100).toString());
 								    	
 		dom[1].removeClass("textConteiner_over");
 		dom[1].addClass("textConteiner");	
@@ -1618,14 +1826,14 @@ MyControlsFactory.ComboBox.prototype.mouseClick = function(opt, time){
 				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
 				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));
 		
-		dom[0].find("img").attr("src", "img/combobox1_1.png?" + (Math.random()*100).toString());
+		dom[0].find("img").attr("src", MyControlsFactory.BUFFER_PATH + "img/combobox1_1.png?" + (Math.random()*100).toString());
 	}else{		
 		StyleManager.setGradient(dom[0], 
 				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
 				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_END), 
 				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));	
 		
-		dom[0].find("img").attr("src", "img/combobox1_0.png?" + (Math.random()*100).toString());	
+		dom[0].find("img").attr("src", MyControlsFactory.BUFFER_PATH + "img/combobox1_0.png?" + (Math.random()*100).toString());	
 	}	
 	
 	if (this._keys.length > 0){
@@ -1675,103 +1883,7 @@ MyControlsFactory.ComboBox.prototype.mouseOutText = function(opt, time){
 				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));
 }
 
-//Установить опции
-MyControlsFactory.ComboBox.prototype.setOptions = function(opt){	
-	var _this  = this;
-	
-	this._childs_panel.remove();
-	
-	this._options = opt;
-	
-	var options_length = 0;
-	
-	this._keys = [];
-	this._childs = [];
-	
-	for(var i in this._options) if (this._options.hasOwnProperty(i)) {
-		options_length++;
-		this._keys.push(i);
-	}
-	
-	var this_shift = 2;
-	
-	var panel_height = options_length * (30 + this_shift) + 7;
-	
-	this._childs_panel = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.PANEL, 
-							  {"parent": this._parent_name,
-							   "bgColor": "#AAAAAA",
-							   "maximize": false,
-							   "pos": [this._top + 30, this._left],
-							   "size": [this._width, panel_height],
-							   "minSize": [this._width, 0]});	
-	
-	var pos_y = this._top + 35;		
-	
-	var index = 0;
-	
-	for(var i in this._options) if (this._options.hasOwnProperty(i)) {
-		var cur_child = this._options[i];
-		
-		var elem = MyControlsFactory.createInstance( MyControlsFactory.CONTROLS.CHECK_BOX, 
-								{"parent": this._parent_name,
-							    "bgColor": "#387EAA",
-							    "checked": false,
-							    "do": function(){
-							    	_this.setAllOptionsChecked(this, false);
-							    		
-							    		var value = this.getValue();
-							    		
-							    		_this.close();								    									    																			    							    
-										_this.setValue(value);	
-										
-										var key = _this.getKeyByValue(value);
-										
-										_this._selected({
-											"key": key,
-											"value": value
-										});
-							    },
-							    "enterOutFun": [
-							    	function(){
-							    		//console.log(isExist);
-							    	},function(){
-							    		//console.log("out");								    	
-							    }],
-							    "text": cur_child,
-							    "pos": [pos_y + index*(30 + this_shift), this._left + 5],
-							    "size": [this._width - 10, 30]});
-							    
-	    this._childs.push(elem);
-	    
-	    this._childs_panel.addToPanel(elem);
-	    
-	    index++;	    
-	}
-	
-	//Добавить панель чайлдов	
-	this.getChildsPanel().append();
-	
-	//Добавить чайлдов
-	for(var i in this._childs){
-		this._childs[i].append();
-	}
-	
-	this.getJQUERYDOM()[1].text(this._options[this._keys[0]]);
-			
-	if(this._isExpand == true){
-		var dom = this.getJQUERYDOM();	
-		
-		dom[0].removeClass("gradient_click");	
-		dom[0].removeClass("gradient_over");	
-		
-		dom[0].find("img").attr("src", "img/combobox1_0.png?" + (Math.random()*100).toString());	
-	
-		dom[1].addClass("textConteiner");	
-		dom[1].removeClass("textConteiner_over");
-		
-		this._isExpand = false;
-	}				
-}
+
 
 //Отобразить ComboBox
 MyControlsFactory.ComboBox.prototype.append = function() {						
@@ -1975,32 +2087,6 @@ MyControlsFactory.ProgressBar.prototype.changeProgress = function(opt) {
 	_this._progress = cur_progress;
 							
 	_this._call_back(_this._progress);
-	
-	/*							
-	this._timer_id = setInterval( function(){
-		var cur_progress = parseInt( _this._bar_text.text(), 10 );
-											       	 	
-		var new_progress = (cur_progress + d_shift_progress) + "%";
-		
-		console.log("new_progress = " + new_progress);
-											       	 	
-		_this._bar_text.text(new_progress); 					
-											       	 	
-		_this._call_back(cur_progress + d_shift_progress);
-	}, change_progress_period );
-    */
-   /*
-	this._bar.animate({"width": new_width},
-					    opt.time,
-						function(){
-							clearInterval(_this._timer_id);
-							
-							_this._bar_text.text(cur_progress + "%");
-							
-							_this._progress = cur_progress;
-							
-							_this._call_back(_this._progress);
-						});	*/
 }
 //*********************************************************************************************************************************************************************************
 MyControlsFactory.ScrollPanel = function(opt){	
@@ -2072,47 +2158,15 @@ MyControlsFactory.ScrollPanel.prototype.setCurPos = function(pos) {
 	MyControlsFactory.ScrollPanel.superclass.setCurPos.apply(this, arguments);
 	
 	this._scroll_panel.setCurPos(pos);
-	
-	//console.log("_childs_pos = " + this._childs_pos + ", pos = " + pos);
-	
-	//console.log(pos[0] + this._child_cur_pos[1] + this._height_shift);
-	//console.log(pos[1] + this._child_cur_pos[0]);
-	
-	/*this._childs_pos.push([this._top  + this._child_cur_pos[1] + this._height_shift, 
-				           this._left + this._child_cur_pos[0]]);*/
-	//this._child_cur_pos[1] += child.getSize()[1] + this._height_shift;	
-			          
+		          
 	for (var i in this._childs_pos){
 		var cur_pos = this._childs_pos[this._childs_pos.length - i - 1];
 		
 		var cur_child_size = this._childs[i].getSize();
 				
-		//console.log("cur_child_size = " + ( -(parseInt(i,10) + 1)*(35) + pos[0]  + this._child_cur_pos[1]));
-		
 		cur_pos[0] = -(parseInt(i,10) + 1)*(cur_child_size[1] + this._height_shift) + pos[0]  + this._child_cur_pos[1];
 		cur_pos[1] = pos[1]  + this._child_cur_pos[0];
 	}
-	
-	//console.log("_childs_pos = " + this._childs_pos + ", pos = " + pos);
-	
-	/*
-	var childs_shifts = this._childs_shifts;		
-		
-	for(var i in this._childs){
-		var cur_child = this._childs[i];
-		
-		if(this._isMaximize == true){				
-			cur_child.setCurPos([
-				pos[0] + childs_shifts[i][0] + this._loc_offsets[0][0],
-				pos[1] + childs_shifts[i][1] + this._loc_offsets[0][1]
-			]);			
-		}else{
-			cur_child.setCurPos([
-				pos[0] + this._loc_offsets[0][0],
-				pos[1] + this._loc_offsets[0][1]
-			]);	
-		}
-	}*/
 }
 
 //Создать панель
@@ -2163,10 +2217,6 @@ MyControlsFactory.ScrollPanel.prototype.create = function(opt) {
 			css("width", 15).
 			css("height", 25);	
 	
-	/*StyleManager.setGradient(bar, 
-				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_BAR_START), 
-				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_BAR_END), 
-				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));*/
 	StyleManager.setBGOpacity(bar, 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR_BAR), 
 				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));	
@@ -2211,38 +2261,9 @@ MyControlsFactory.ScrollPanel.prototype.create = function(opt) {
 				
 				cur_child.setCurPos(pos)
 				
-				//var panel_pos = _this._scroll_panel.getCurPos();
-				//var child_pos = cur_child.getCurPos();
-				
-				//var child_panel_shift = [child_pos[0] - panel_pos[0], child_pos[1] - panel_pos[1]];
-				
-				//console.log(pos[0] - panel_pos[0]);
-				//console.log(_this._old_progress);
-				
-				//_this._scroll_panel._childs_shifts[i][0] = child_panel_shift[0];
-				//_this._scroll_panel._childs_shifts[i][1] = child_panel_shift[1];
-				
 				_this._scroll_panel._childs_shifts[i][0] = pos[0] - panel_pos[0];
 				
-				//console.log(child_panel_shift);
-				
-				//this._childs_shifts
-				//console.log(_this._progress);				
-				//console.log(_this._childs_pos[i][0]);
-				//console.log(cur_child.getCurPos()[0]);
-				//console.log(parent_offset);//this._childs_shift
-				//console.log(_this._scroll_panel.getCurPos());				
-				
-				//_this._scroll_panel._childs_shifts[i][0] = _this._progress + 2;
-				
-				//console.log(_this._scroll_panel._childs_shifts[i]);
-				//console.log(_this._childs_shift);
-				
-				//var el_bound = cur_child.getBound();
-				
 				var in_bound = cur_child.inBound(_this._scroll_panel/*boud*/);
-				
-				//console.log("in_bound = " + in_bound);
 				
 				if (in_bound == false){
 					cur_child.hide();					
@@ -2540,6 +2561,14 @@ MyControlsFactory.DatePicker.prototype.create = function() {
 			css("width", this._width - 10).
 			css("height", this._height - 10);	
 	
+	if (this._save == true){
+		var data = MyControlsFactory._styleManager.getState();	
+		
+		if (data != null){
+			content.attr("value", data);
+		}	
+	}	
+	
 	this._loc_offsets = [[0, 0], [-2, 0]];
 	
 	content.datetimepicker();
@@ -2561,13 +2590,28 @@ MyControlsFactory.DatePicker.prototype.create = function() {
 	return [cont_first, content];
 }
 
+//Удалить
+MyControlsFactory.DatePicker.prototype.remove = function() {	
+	
+	if (this._save == true){
+		MyControlsFactory._styleManager.saveState(this.value());				
+	}
+	
+	MyControlsFactory.DatePicker.superclass.remove.apply(this, arguments);	
+}
+
 //Вернуть значение
 MyControlsFactory.DatePicker.prototype.value = function(){			
-	return this._JQUERY_DOM[1].attr("value");		
+	return this._JQUERY_DOM[1].prop("value");		
+}
+
+//Установить значение
+MyControlsFactory.DatePicker.prototype.setValue = function(value){			
+	this._JQUERY_DOM[1].prop("value", value);		
 }
 
 //Time
-MyControlsFactory.DatePicker.prototype.getTime = function(){	
+MyControlsFactory.DatePicker.prototype.getTime = function(mode){	
 	var all_date = this.value();
 	
 	var time = {
@@ -2576,13 +2620,17 @@ MyControlsFactory.DatePicker.prototype.getTime = function(){
 		}
 	
 	if (all_date != ""){
-		var all_time = all_date.split(" ")[1];
-	
-		time = all_time.split(":");
+		if(mode == 1){
+			//
+		}else{
+			var all_time = all_date.split(" ")[1];
 		
-		time = {
-			"hour": time[0],
-			"min": time[1]
+			time = all_time.split(":");
+			
+			time = {
+				"hour": time[0],
+				"min": time[1]
+			}			
 		}
 	}
 				
@@ -2590,7 +2638,7 @@ MyControlsFactory.DatePicker.prototype.getTime = function(){
 }
 
 //Date
-MyControlsFactory.DatePicker.prototype.getDate = function(){		
+MyControlsFactory.DatePicker.prototype.getDate = function(mode){		
 	var all_date = this.value();
 	
 	var date = {
@@ -2598,19 +2646,29 @@ MyControlsFactory.DatePicker.prototype.getDate = function(){
 			"day": "01",
 			"year": "2013"
 		}
-	
-	if (all_date != ""){
-		all_date = all_date.split(" ")[0];
-		
-		date = all_date.split("/");
-		
-		date = {
-			"month": date[1],
-			"day": date[0],
-			"year": date[2]
-		}	
-	}			
-	
+	if (all_date != ""){	
+		if(mode == 1){
+			all_date = all_date.split(" ")[0];
+			
+			date = all_date.split(".");
+			
+			date = {
+				"month": date[1],
+				"day": date[0],
+				"year": date[2]
+			}
+		}else{			
+			all_date = all_date.split(" ")[0];
+				
+			date = all_date.split("/");
+				
+			date = {
+				"month": date[0],
+				"day": date[1],
+				"year": date[2]
+			}						
+		}
+	}	
 	return date;		
 }
 
@@ -2630,4 +2688,227 @@ MyControlsFactory.DatePicker.prototype.mouseOut = function(opt, time){
 	StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
 				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));		
+}
+//***********************************************************************************************************************************
+MyControlsFactory.MapBrowser = function(opt){	
+		
+	this._start_point  = opt.startPoint; 	
+	this._zoom       = opt.zoom;
+			
+	this._click_points = [];
+	this._click_points_obj = [];
+	
+	this._mouse_x = null;
+	this._mouse_y = null;
+	
+	this._offset = [5, 5];
+	
+	this._map_id = MyControlsFactory.MyControls.GUID();
+		
+	MyControlsFactory.MapBrowser.superclass.constructor.apply(this, arguments);				
+}
+
+MyControlsFactory.MyControls.extend(MyControlsFactory.MapBrowser, MyControlsFactory.MyControls);
+
+//ернуть имя контрола(убрать впоследствии)
+MyControlsFactory.MapBrowser.prototype.getName = function() {		
+	return StyleManager.STYLE.MAP_BROWSER;
+}
+
+//Создать панель
+MyControlsFactory.MapBrowser.prototype.create = function(opt) {	
+	var _this = this;
+	
+	var browser = $("<div></div>").
+			attr("id", this._map_id ).									     
+	        attr("class", "container").	     	       
+	        css("top", this._top - 5).
+			css("left", this._left - 5).
+			css("width", this._width + 10).
+			css("height", this._height + 10);						
+	
+	StyleManager.setBGOpacity(browser, 
+				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
+				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));					      	
+	StyleManager.setRadius(browser, StyleManager.STANDART_CORNER_RADIUS);
+	
+	return [browser];		
+}
+
+MyControlsFactory.MapBrowser.prototype.setMap = function() {	
+	
+	var _this = this;
+	
+	createFlashMap(document.getElementById(this._map_id), function(map){																												
+														map.miniMap.setVisible(false);
+														map.allControls.setVisible(false);
+														map.miniMap.setOpen(false)
+														 
+														map.moveTo(32.998306, 43.378731, 6);		
+														
+														var cross_size_x = 0.07;
+														var cross_size_y = 0.05;
+														
+														map.setHandler("onClick", function(){															
+															_this._mouse_x = map.getMouseX();
+															_this._mouse_y = map.getMouseY();
+															
+															_this._click_points.push([_this._mouse_x, _this._mouse_y]);
+															
+															
+															var p_0 = [_this._mouse_x - cross_size_x, _this._mouse_y];
+															var p_1 = [_this._mouse_x + cross_size_x, _this._mouse_y];
+															
+															var p_2 = [_this._mouse_x, _this._mouse_y - cross_size_y];
+															var p_3 = [_this._mouse_x, _this._mouse_y + cross_size_y];
+															
+															
+															var obj_0 = _this.drawLine(map, StyleManager.LINE_OPT, p_0, p_1);
+															var obj_1 = _this.drawLine(map, StyleManager.LINE_OPT, p_2, p_3);
+															
+															_this._click_points_obj.push(obj_0);
+															_this._click_points_obj.push(obj_1);															
+														});			
+												});		
+}
+
+MyControlsFactory.MapBrowser.prototype.getPoints = function() {	
+	return this._click_points;	
+}
+
+MyControlsFactory.MapBrowser.prototype.clear = function() {
+	for(i in this._click_points_obj){
+		this._click_points_obj[i].remove();
+	}	
+}
+
+MyControlsFactory.MapBrowser.prototype.drawLine = function(map, opt, p0, p1) {		
+		var o = map.addObject();
+		o.setGeometry({
+			"type" : "LINESTRING",
+			"coordinates" : [[p0[0], p0[1]], [p1[0], p1[1]]]
+		});
+		o.setStyle({
+			outline : {
+				color : opt["penColor"],
+				thickness : opt["penThickness"],
+				opacity : opt["penOpacity"]
+			}
+		});
+		
+		return o;
+}
+
+//Нарисовать окружность
+MyControlsFactory.MapBrowser.prototype.drawCircle = function(map, opt, p_center, radius) {
+	var o = map.addObject();
+
+	o.setCircle(p_center[0], p_center[1], radius);
+
+	o.setStyle({
+		outline : {
+			color : opt["penColor"],
+			thickness : opt["penThickness"],
+			opacity : opt["penOpacity"]
+		}
+	});
+	
+	return o;
+}
+//********************************************************************************************************************************************************
+//************************************************************************************************************************************************
+MyControlsFactory.TextArea = function(opt){	
+	this._opt = opt;
+	
+	this._text = opt.text;			
+		
+	MyControlsFactory.TextArea.superclass.constructor.apply(this, arguments);		
+}
+
+MyControlsFactory.MyControls.extend(MyControlsFactory.TextArea, MyControlsFactory.MyControls);
+
+//ернуть имя контрола(убрать впоследствии)
+MyControlsFactory.TextArea.prototype.getName = function() {		
+	return StyleManager.STYLE.TEXTAREA;
+}
+
+//Создать TextArea
+MyControlsFactory.TextArea.prototype.create = function() {	
+	var _this = this;
+		
+	var id = MyControlsFactory.MyControls.GUID();
+
+	//Контейнер с контентом
+	var content = $("<textarea ></textarea >").
+			attr("id", id + MyControlsFactory.DIVS_TYPES.CONTENT ).			
+			attr("name", id + MyControlsFactory.DIVS_TYPES.CONTENT ).	
+			//attr("rows", this._opt.rows).	
+			//attr("cols", this._opt.cols).			
+			attr("value", this._text).
+	        attr("class", "text_area").		           	      
+	        css("top", this._top).
+			css("left", this._left + 5).
+			css("width", this._width - 10).
+			css("height", this._height - 10).
+			hover(function(){
+				_this.mouseEnter();
+			},function(){
+				_this.mouseOut();
+			});
+	
+	this._loc_offsets = [[0,0], [0, 5]];	
+		
+	//"Прозрачный" контейнер	
+	var cont_first = $("<div></div>").	
+			attr("id", id + MyControlsFactory.DIVS_TYPES.FIRST_CONT).						
+			attr("class", "container pie").			
+			css("top", this._top).
+			css("left", this._left).
+			css("width", this._width).
+			css("height", this._height);
+			
+	StyleManager.setBGOpacity(cont_first, 
+				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
+				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));					      	
+	StyleManager.setRadius(cont_first, StyleManager.STANDART_CORNER_RADIUS);			
+	StyleManager.setShadow(cont_first, 
+			  this.getStealValue(StyleManager.STYLE_NAMES.COLOR_SHADOW), 
+			  this.getStealValue(StyleManager.STYLE_NAMES.SHADOW_SHIFTS));	
+	
+	return [cont_first, content];
+}
+
+//Событие при наведении мыши
+MyControlsFactory.TextArea.prototype.mouseEnter = function(opt, time){
+	var dom = this.getJQUERYDOM();
+	
+	dom[1].removeClass("text_area");	
+	dom[1].addClass("text_area_over");	
+	
+	StyleManager.setGradient(dom[0], 
+				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
+				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_END), 
+				this.getStealValue(StyleManager.STYLE_NAMES.OPACITY_OVER));			
+}
+
+//Событие при уходе мыши
+MyControlsFactory.TextArea.prototype.mouseOut = function(opt, time){
+	var dom = this.getJQUERYDOM();
+		
+	dom[1].addClass("text_area");	
+	dom[1].removeClass("text_area_over");	
+	
+	StyleManager.setBGOpacity(dom[0], 
+				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
+				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));		
+}
+
+//Вернуть значение
+MyControlsFactory.TextArea.prototype.value = function(){			
+	return this._JQUERY_DOM[1].prop("value");		
+}
+
+//Установить значение
+MyControlsFactory.TextArea.prototype.setValue = function(val){			
+	return this._JQUERY_DOM[1].prop("value", val);		
 }

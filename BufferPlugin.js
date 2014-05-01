@@ -1,5 +1,5 @@
 (function($){
-  var publicInterface = {
+	var publicInterface = {
 	    pluginName: 'BufferPlugin', 
 	    afterViewer: function(params, map){	 	    
 	        MyControlsFactory.MyControls.setParent("flash");		
@@ -85,8 +85,6 @@
 		
 			var buff_path = gmxCore.getModulePath("BufferPlugin");
 		
-			console.log(buff_path + "img/buffer_tool.png");
-		
 	        var bufferTool = {
 				'key':             "buffer_tool",
 				'activeStyle':     {},
@@ -109,11 +107,11 @@
 			
 			return gmxCore.loadScriptWithCheck([
                 {	//MyControlsFactory
-                    check: function(){ return false; },
+                    check: function(){ return (window.MyControlsFactory != undefined); },
                     script: path + "js/MyControlsFactory.js?" + Math.random()
                 },
                 {   //StyleManager
-                    check: function(){ return false; },
+                    check: function(){ return (window.StyleManager != undefined); },
                     script: path + "js/StyleManager.js?" + Math.random()
                 },
                 {   //Buffer

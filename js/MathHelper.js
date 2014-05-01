@@ -3,7 +3,7 @@ function MathHelper(){}
 
 MathHelper.RAD_IN_1_GRAD = Math.PI / 180;
 
-MathHelper.removeObj = function(array, del_el){  	
+MathHelper.removeObj = function(array, del_el){		
 	var del_index = -1;
 	
 	for(i in array){
@@ -19,6 +19,10 @@ MathHelper.removeObj = function(array, del_el){
 	if (del_index != -1){				
 		array.splice(del_index, 1);
 	}	
+}
+
+MathHelper.equals = function(p_0, p_1){
+	return( (p_0[0] == p_1[0]) && (p_0[1] == p_1[1]) );
 }
 
 MathHelper.getDotRadius = function(z){

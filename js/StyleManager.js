@@ -3,21 +3,46 @@
 StyleManager.BASE_STYLE_PREFIX = "_STYLE_";
 
 StyleManager.STANDART_CORNER_RADIUS = 10;
-StyleManager.MAX_COUNT_ELEMENTS = 8;
+StyleManager.MAX_COUNT_ELEMENTS    = 8;
 StyleManager.ANIMATION_TIME    = 650;
 StyleManager.ANIMATION_TIME_IE = 0.0;
 StyleManager.TRANSPARENT_OPACITY    = 0.00;
 
+StyleManager.MAP_TYPE = {
+	"BALTIC_SEA": "BALTIC_SEA"
+}
+
+StyleManager.MAP_BOUND = {
+	"BALTIC_SEA": [[26.7187513956875, 40.351788198796385], 
+				   [42.25342001190878, 40.351788198796385], 
+				   [42.25342001190878, 47.589929803469296], 
+				   [26.7187513956875, 47.589929803469296], 
+				   [26.7187513956875, 40.351788198796385]]
+}
+
+StyleManager.LINE_OPT = {
+		"penColor" : 0xff0000,
+		"penThickness" : 1,
+		"penOpacity" : 100
+	}
+
+StyleManager.DRAW_CIRCLE_OPT = {
+		"penColor" : 0x0000ff,
+		"penThickness" : 3,
+		"penOpacity" : 100
+}
+	
 StyleManager.STYLE = {
-  PANEL           : "MYPANEL_STYLE_",
+	PANEL    : "MYPANEL_STYLE_",
 	SCROLL_PANEL    : "SCROLL_PANEL_",
-	DATE_PICKER     : "DATE_PICKER_",
+	MAP_BROWSER    : "MAP_BROWSER_",
 	PROGRESS_BAR    : "PROGRESS_BAR_STYLE_",
-	BUTTON          : "BUTTON_STYLE_",
-	LABEL           : "LABEL_STYLE_",
-	TEXTBOX         : "TEXTBOX_STYLE_",
-	CHECKBOX        : "CHECKBOX_STYLE_",
-	COMBOBOX        : "COMBOBOX_STYLE_"   
+	BUTTON   : "BUTTON_STYLE_",
+	LABEL    : "LABEL_STYLE_",
+	TEXTBOX  : "TEXTBOX_STYLE_",
+	TEXTAREA : "TEXTAREA_STYLE_",
+	CHECKBOX : "CHECKBOX_STYLE_",
+	COMBOBOX : "COMBOBOX_STYLE_"   
 }
 
 //Поля стилей
@@ -69,12 +94,34 @@ function StyleManager(opt){
 		
 	this._styles_collection = [];
 	
+	//this._current_elem_pos = 0;
+	this._save_object = [];
+	
 	this._cur_style = {};	
 	this._styles_collection_for_all = {};
 	
 	this.setStyles(opt.styles);	
 	this.setStylesForAll(opt.styles_for_all);	
 }
+
+//Сохранить параметры
+StyleManager.prototype.saveState = function(state){		
+	this._save_object.push(state);
+	
+	//console.log( this._save_object );	
+}
+
+//Получить параметры
+StyleManager.prototype.getState = function(){	
+	if(this._save_object.length == 0){
+		return null;
+	}
+	
+	//console.log( this._save_object );
+	
+	return this._save_object.shift();
+}
+
 
 //Остановить стили
 StyleManager.prototype.setStylesForAll = function(styles_for_all){
@@ -89,11 +136,7 @@ StyleManager.prototype.setStylesForAll = function(styles_for_all){
 
 //Вернуть время анимации
 StyleManager.getAnimationTime = function(style){
-	if ($.browser.msie){
-		return StyleManager.ANIMATION_TIME_IE;
-	}
-	
-	return StyleManager.ANIMATION_TIME;
+    return StyleManager.ANIMATION_TIME;
 }
 
 StyleManager.colorToRGB = function(color_16){
@@ -151,54 +194,26 @@ StyleManager.prototype.getStealValue = function(control_name, style_name){
 
 //Установка тени
 StyleManager.setShadow = function(el, color, shift){	
-	if ($.browser.msie != true){	
-		el.css("-webkit-box-shadow", color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
-		el.css("-moz-box-shadow",    color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
-		el.css("box-shadow",         color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
-	}else{
-		//var eel = document.getElementById(el.attr("id"));
-		//alert(eel);
-		//eel.style.filter += "progid:DXImageTransform.Microsoft.MotionBlur(strength=13, direction=310)";
-	}
+    el.css("-webkit-box-shadow", color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
+    el.css("-moz-box-shadow",    color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
+    el.css("box-shadow",         color + " " + shift[0] + "px " + shift[1] + "px " + shift[2] + "px");
 }
 
 //Установка градиента
-StyleManager.setGradient = function(el, color_start, color_end, op){	
-	if ($.browser.msie != true){
-		var rgb_s = StyleManager.colorToRGB(color_start);
-		var rgb_e = StyleManager.colorToRGB(color_end);
-		
-		var _color_start = "rgba(" + rgb_s[0]+ ", " + rgb_s[1] + ", " + rgb_s[2] + ", " + op + ")";
-		var _color_end   = "rgba(" + rgb_e[0]+ ", " + rgb_e[1] + ", " + rgb_e[2] + ", " + op + ")";
-			
-		el.css("background",	  "-webkit-gradient(linear, 0 0, 0 bottom, from(" + _color_start + "), to(" + _color_end + "))");
-		el.css("background", 	  "-webkit-linear-gradient("                      + _color_start + ", "     + _color_end + ")");
-		el.css("background", 	  "-moz-linear-gradient("                         + _color_start + ", "     + _color_end + ")");
-		el.css("background", 	  "-ms-linear-gradient("                          + _color_start + ", "     + _color_end + ")");
-		el.css("background", 	  "-o-linear-gradient("                           + _color_start + ", "     + _color_end + ")");
-		el.css("background",      "linear-gradient("                              + _color_start + ", "     + _color_end + ")");
-		el.css("-pie-background", "linear-gradient("                              + _color_start + ", "     + _color_end + ")");	
-	}else{
-		StyleManager.setBGOpacity(el, color_start, op);	
-		/*	
-		var eel = document.getElementById(el.attr("id"));
-		
-		var op_16 = (255 * op / 100).toString(16);
-		
-		var new_color_start = color_start.replace(/#/g,"");
-		var new_color_end   = color_end.replace(/#/g,"");
-		
-		if (eel.style != null){						
-			if(eel.style.filter == ""){
-				eel.style.filter += "progid:DXImageTransform.Microsoft.gradient(startColorstr=" + "#" + op_16 + new_color_start + ", endColorstr=" + "#" + op_16 + "00ff00" + ")";
-				//eel.style.filter += "progid:DXImageTransform.Microsoft.Shadow(color='#ffoooo', Direction=145, Strength=3)";
-				//eel.style.filter += "progid:DXImageTransform.Microsoft.MotionBlur(strength=13, direction=310)";
-			}else{
-				eel.style.filter = "progid:DXImageTransform.Microsoft.gradient(startColorstr=" +  "#" + op_16 + new_color_end   + ", endColorstr=" + op_16 + new_color_end + ")";
-			}
-		}	
-		*/			
-	}
+StyleManager.setGradient = function(el, color_start, color_end, op){
+    var rgb_s = StyleManager.colorToRGB(color_start);
+    var rgb_e = StyleManager.colorToRGB(color_end);
+    
+    var _color_start = "rgba(" + rgb_s[0]+ ", " + rgb_s[1] + ", " + rgb_s[2] + ", " + op + ")";
+    var _color_end   = "rgba(" + rgb_e[0]+ ", " + rgb_e[1] + ", " + rgb_e[2] + ", " + op + ")";
+        
+    el.css("background",	  "-webkit-gradient(linear, 0 0, 0 bottom, from(" + _color_start + "), to(" + _color_end + "))");
+    el.css("background", 	  "-webkit-linear-gradient("                      + _color_start + ", "     + _color_end + ")");
+    el.css("background", 	  "-moz-linear-gradient("                         + _color_start + ", "     + _color_end + ")");
+    el.css("background", 	  "-ms-linear-gradient("                          + _color_start + ", "     + _color_end + ")");
+    el.css("background", 	  "-o-linear-gradient("                           + _color_start + ", "     + _color_end + ")");
+    el.css("background",      "linear-gradient("                              + _color_start + ", "     + _color_end + ")");
+    el.css("-pie-background", "linear-gradient("                              + _color_start + ", "     + _color_end + ")");	
 }
 
 //Установить радиус

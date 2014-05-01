@@ -1,6 +1,6 @@
 
 Korridor.GEOMETRY_TYPES = {
-  "LINE": "LINESTRING",
+	"LINE": "LINESTRING",
 	"POLYGON": "POLYGON",
 	"DOT": "POINT"
 }
@@ -520,6 +520,9 @@ Korridor.prototype.draw = function(progress_bar, isPolygon) {
 		ret_buff = this.drawContur_2(progress_bar, isPolygon);
 	}
 	*/
+	
+	//this._parent_manager.addScrollBar();
+	
 	ret_buff = this.drawContur_2(progress_bar, isPolygon);
 	
 	return ret_buff;
@@ -574,7 +577,7 @@ Korridor.prototype.getJSTPolygonByPoints = function(points, start_pos, end_pos){
 	
 	var reader = new jsts.io.WKTReader();  
 		
-	var segment_p_0 = this.creatSegmentPolygon(this._points[start_pos], this._points[start_pos + 1]);
+	var segment_p_0 = this.creatSegmentPolygon(points[start_pos], points[start_pos + 1]);
 		
 	segment_p_0[segment_p_0.length] = segment_p_0[0];
 	
@@ -582,16 +585,24 @@ Korridor.prototype.getJSTPolygonByPoints = function(points, start_pos, end_pos){
 	p_old = reader.read(p_old);	
 											
 	if ((end_pos - start_pos) > 1){			
-		for ( i = start_pos; i < end_pos; i++) {	
+		for ( var i = start_pos; i < end_pos; i++) {	
 			
-			var segment_p = this.creatSegmentPolygon(this._points[i], this._points[i + 1]);
+			var segment_p = this.creatSegmentPolygon(points[i], points[i + 1]);
 					
 			segment_p[segment_p.length] = segment_p[0];											
-						
-			p = reader.read(MathHelper.createJSTSPolygon(segment_p));								
 			
-			new_p = p.union(p_old);											
-			
+			try{
+				p = reader.read(MathHelper.createJSTSPolygon(segment_p));		
+			}catch(err){			  	
+			  	trace("createJSTSPolygon error!!!");			  				  	
+			}			
+													
+			try{
+				new_p = p.union(p_old);	
+			}catch(err){
+			  	trace("union error = " + err);			  
+			}
+  		
 			p_old = new_p;								
 		}
 	}else{
@@ -601,26 +612,85 @@ Korridor.prototype.getJSTPolygonByPoints = function(points, start_pos, end_pos){
 	return new_p;	
 }					
 		
+Korridor.prototype.getPointsWithautEquals = function(points){	
+	var new_points = [];
+	
+	var status = true;
+	
+	while(status == true){
+		for( var i = 0; i < points.length - 1; i++){
+			if (!MathHelper.equals(points[i], points[i + 1])){				
+				new_points.push(points[i]);	
+				
+				status = false;										
+			}	
+		}
+		
+		new_points.push(points[i]);		
+	}	
+	
+	return new_points;
+}
+
+function getSubBuffer(buffer, pos_start, pos_end){
+	var sub_buffer = [];
+	
+	for(i = pos_start; i < pos_end; i++){
+		sub_buffer.push(buffer[i]);
+	}
+	
+	return sub_buffer;
+} 
+
+var cur_el = [];
+
+function doUnion(buffer, cur_el){	
+	var len = buffer.length;
+	
+	trace("(len % 2) = " + (len % 2));
+	
+	trace("len = " + len);
+	trace(buffer);
+	
+	var part_l = ~~(len/2);
+	var part_r = len - part_l;
+
+	var buffer_l = getSubBuffer(buffer, 0, part_l);
+	var buffer_r = getSubBuffer(buffer, part_l, part_l + part_r);			
+	
+	trace(buffer_l);
+	trace(buffer_r);
+	//trace("len buffer_l = " + part_l);
+	//trace("len buffer_r = " + part_r);	
+	
+	var buffer_l_new = [];
+	var buffer_r_new = [];
+	
+	var len = part_l;
+}
+
 Korridor.prototype.drawContur_2 = function(progress_bar, isPolygon){	
 
 	var _this = this;
 	
-	var len = _this._points.length;
-			
-	var count_points = 2;
+	var correct_points= this.getPointsWithautEquals(this._points);   
+	
+	var len = correct_points.length;
+		
+	var count_points = 2;	
 	
 	if((len > 15) && (len <= 60)){
 		count_points = 4;
 	}else if((len > 60) && (len <= 100)){
 		count_points = 10;
 	}else if((len > 100) && (len <= 200)){
-		count_points = 20;
+		count_points = 15;
 	}else if((len > 200) && (len <= 300)){
-		count_points = 30;
+		count_points = 25;
 	}else if((len > 300) && (len <= 500)){
-		count_points = 50;
+		count_points = 30;
 	}else if(len > 500){
-		count_points = 85;
+		count_points = 50;
 	}		
 	
 	var count_iter = ~~((len - 1)/(count_points - 1));	
@@ -628,12 +698,7 @@ Korridor.prototype.drawContur_2 = function(progress_bar, isPolygon){
 	var last_points = (len - 1) - (count_iter * (count_points - 1));
 	
 	var intervals = [];
-	/*
-	trace("count_iter   = " + count_iter);
-	trace("count_points = " + count_points);
-	trace("percent_shag = " + percent_shag);
-	trace("last_points = " + last_points);
-	*/
+	
 	for( var i = 0; i < count_iter; i++){
 		
 		intervals.push( [i*(count_points - 1), (i + 1)*(count_points - 1)] );
@@ -641,44 +706,32 @@ Korridor.prototype.drawContur_2 = function(progress_bar, isPolygon){
 	
 	intervals[count_iter - 1][1] = i*(count_points - 1) + last_points;
 	
-	//trace("intervals = " + intervals);
-	
-	//this._all_time = 0;
-	
 	this._cur_polygon = [];
 	
 	this._parent_manager.addScrollBar();
 	
 	function union(p_0, p_1){		
-		//var merc_coords = MathHelper.arrayGradToRad( p_0.getCoordinates() );
-		
-		//trace(merc_coords);
 		
 		var union_p = p_0.union(p_1);
 		
 		return union_p;
 	}
-								 
+										 							 
 	for( var j = 0; j < count_iter; j++){		
 		setTimeout(function(cur_i){ 			
 			return function(){
 				var cur_interval = intervals[cur_i];
 						
-				var cur_polygon = _this.getJSTPolygonByPoints(_this._points, cur_interval[0], cur_interval[1]);				
-				//var draw_polygon = _this.drawJSTPolygon(cur_polygon);
+				var cur_polygon = _this.getJSTPolygonByPoints(correct_points, cur_interval[0], cur_interval[1]);				
+				var draw_polygon = _this.drawJSTPolygon(cur_polygon);
 				
 				_this._cur_polygon.push(cur_polygon);
 				
 				progress_bar.addToProgress({"progress": percent_shag,
 											 "time": 0});
 						
-				if (cur_i == (count_iter - 1)){				
-					var cur_p = _this._cur_polygon[0];
-					
-					for(var i = 1; i < _this._cur_polygon.length; i++){						
-						//cur_p = cur_p.union( _this._cur_polygon[i] );	
-						cur_p = union(cur_p, _this._cur_polygon[i]);				
-					}
+				if (cur_i == (count_iter - 1)){									
+					var cur_p = _this.unionAllPolygon(_this._cur_polygon);
 					
 					_this.remove();
 					
@@ -689,25 +742,42 @@ Korridor.prototype.drawContur_2 = function(progress_bar, isPolygon){
 											    					
 					progress_bar.clear();
 					
-					
-					
-					
-					//var len = _this._parent_manager._geometry_buffer_objects.length;
-					
 					_this._parent_manager._allDrawBuffers[_this._cur_geo_obj["objectId"]] = draw_polygon;
 					
 					_this._parent_manager._hard_geometry_count -= 1;
 					
 					if (_this._parent_manager._hard_geometry_count == 0){
 						_this._parent_manager.clearProgressBar();
-					}																				
+					}																			
 				}
 			}			
 		}(j), 0);				
-	}				   	
+	}				   
 }
 
+Korridor.prototype.unionAllPolygon = function(polygons){
+	var len = polygons.length;
+	
+	var part_l = ~~(len/2);
+	var part_r = len - part_l;
 
+	var polygons_l = getSubBuffer(polygons, 0, part_l);
+	var polygons_r = getSubBuffer(polygons, part_l, part_l + part_r);			
+	
+	var cur_p_l = polygons_l[0];
+	
+	for(var i = 1; i < polygons_l.length; i++){												
+		cur_p_l = cur_p_l.union(polygons_l[i]);			
+	}
+	
+	var cur_p_r = polygons_r[0];
+	
+	for(var i = 1; i < polygons_r.length; i++){												
+		cur_p_r = cur_p_r.union(polygons_r[i]);			
+	}
+	
+	return cur_p_l.union(cur_p_r);			
+}
 
 Korridor.prototype.drawJSTPolygon = function(polygon, isPolygom){
 	var segmentOpt = {
