@@ -1,4 +1,4 @@
-
+(function() {
 //Стили контролов
 StyleManager.BASE_STYLE_PREFIX = "_STYLE_";
 
@@ -230,3 +230,8 @@ StyleManager.setBGOpacity = function(el, colors, op){
 	el.css("background",      "rgba(" + rgb[0]+ ", " + rgb[1] + ", " + rgb[2] + ", " + op + ")");
 	el.css("-pie-background", "rgba(" + rgb[0]+ ", " + rgb[1] + ", " + rgb[2] + ", " + op + ")");
 }
+
+window.nsBuffer = window.nsBuffer || {};
+nsBuffer.StyleManager = StyleManager;
+
+})();

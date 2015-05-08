@@ -1,3 +1,4 @@
+(function() {
 
 MyControlsFactory._styleManager = null;
 
@@ -63,7 +64,7 @@ MyControlsFactory.MyControls = function(opt){
 	//this._styleManager = null;
 	this._curStyle = null;
 	
-	this._bgColor = this.getCurStyle()[ this._style_prefix + StyleManager.STYLE_NAMES.COLOR ];		
+	this._bgColor = this.getCurStyle()[ this._style_prefix + nsBuffer.StyleManager.STYLE_NAMES.COLOR ];		
 	
 	this._bgColor_opt = opt.bgColor;
 	this._opacity     = opt.opacity;
@@ -292,7 +293,7 @@ MyControlsFactory.MyControls.setParent = function(parent){
 
 //Создание StealManager'a
 MyControlsFactory.MyControls.createStealManager = function(opt){
-	MyControlsFactory._styleManager = new StyleManager(opt);		
+	MyControlsFactory._styleManager = new nsBuffer.StyleManager(opt);		
 }
 
 //Вернуть _curStyle
@@ -344,7 +345,7 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.Label, MyControlsFactory.M
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.Label.prototype.getName = function() {		
-	return StyleManager.STYLE.LABEL;
+	return nsBuffer.StyleManager.STYLE.LABEL;
 }
 
 //Создать Метку
@@ -372,6 +373,8 @@ MyControlsFactory.Label.prototype.create = function() {
 			css("width", this._width).
 			css("height", this._height);	
 	
+    var StyleManager = nsBuffer.StyleManager;
+    
 	StyleManager.setBGOpacity(cont_first, 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
 				 this.getStealValue(StyleManager.STYLE_NAMES.OPACITY));					      	
@@ -402,6 +405,7 @@ MyControlsFactory.Label.prototype.create = function() {
 //Событие при наведении мыши
 MyControlsFactory.Label.prototype.mouseEnter = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER), 
@@ -411,6 +415,7 @@ MyControlsFactory.Label.prototype.mouseEnter = function(opt, time){
 //Событие при уходе мыши
 MyControlsFactory.Label.prototype.mouseOut = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
@@ -443,7 +448,7 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.MyPanel, MyControlsFactory
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.MyPanel.prototype.getName = function() {		
-	return StyleManager.STYLE.PANEL;
+	return nsBuffer.StyleManager.STYLE.PANEL;
 }
 
 //Вернуть Z-index
@@ -454,6 +459,7 @@ MyControlsFactory.MyPanel.prototype.getZIndex = function() {
 //setModalState
 MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting, opt) {
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 	
 	var el = this.getJQUERYDOM()[0];
 	
@@ -569,6 +575,7 @@ MyControlsFactory.MyPanel.prototype.setWaitingLoadingState = function(isWaiting,
 //setModalState
 MyControlsFactory.MyPanel.prototype.setModalState = function(isModal) {
 	var el = this.getJQUERYDOM()[0];
+    var StyleManager = nsBuffer.StyleManager;
 	
 	if (isModal == true){
 		this._modal_state = true;
@@ -642,6 +649,7 @@ MyControlsFactory.MyPanel.prototype.setCurPos = function(pos) {
 //Создать панель
 MyControlsFactory.MyPanel.prototype.create = function(opt) {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -799,6 +807,7 @@ MyControlsFactory.MyPanel.prototype.addToPanel = function(child) {
 //Отобразить элемент а форме
 MyControlsFactory.MyPanel.prototype.append = function() {	
 	MyControlsFactory.MyPanel.superclass.append.apply(this, arguments);
+    var StyleManager = nsBuffer.StyleManager;
 	
 	var _this = this;
 	
@@ -864,12 +873,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.TextBox, MyControlsFactory
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.TextBox.prototype.getName = function() {		
-	return StyleManager.STYLE.TEXTBOX;
+	return nsBuffer.StyleManager.STYLE.TEXTBOX;
 }
 
 //Создать TextBox
 MyControlsFactory.TextBox.prototype.create = function() {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 
@@ -931,6 +941,7 @@ MyControlsFactory.TextBox.prototype.remove = function() {
 //Событие при наведении мыши
 MyControlsFactory.TextBox.prototype.mouseEnter = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	dom[1].removeClass("inputConteiner");	
 	dom[1].addClass("inputConteiner_over");	
@@ -944,6 +955,7 @@ MyControlsFactory.TextBox.prototype.mouseEnter = function(opt, time){
 //Событие при уходе мыши
 MyControlsFactory.TextBox.prototype.mouseOut = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 		
 	dom[1].addClass("inputConteiner");	
 	dom[1].removeClass("inputConteiner_over");	
@@ -989,12 +1001,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.Button, MyControlsFactory.
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.Button.prototype.getName = function() {		
-	return StyleManager.STYLE.Button;
+	return nsBuffer.StyleManager.STYLE.Button;
 }
 
 //Создать Метку
 MyControlsFactory.Button.prototype.create= function() {		
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -1116,7 +1129,8 @@ MyControlsFactory.Button.prototype.create= function() {
 
 //Событие при клике мыши
 MyControlsFactory.Button.prototype.mouseClick = function(opt, time){
-	var dom = this.getJQUERYDOM();	
+	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	if(this._isClicked == false){	
 		
@@ -1164,6 +1178,7 @@ MyControlsFactory.Button.prototype.mouseEnterText = function(opt, time){
 //Событие при наведении мыши
 MyControlsFactory.Button.prototype.mouseEnterBcGround = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	StyleManager.setGradient(dom[0], 
 				this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER_START), 
@@ -1189,6 +1204,7 @@ MyControlsFactory.Button.prototype.mouseOutText = function(opt, time){
 //Событие при уходе мыши
 MyControlsFactory.Button.prototype.mouseOutBcGround = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
@@ -1242,12 +1258,13 @@ MyControlsFactory.CheckBox.prototype.remove = function() {
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.CheckBox.prototype.getName = function() {		
-	return StyleManager.STYLE.CHECKBOX;
+	return nsBuffer.StyleManager.STYLE.CHECKBOX;
 }
 
 //Создать CheckBox
 MyControlsFactory.CheckBox.prototype.create = function() {		
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 	
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -1356,6 +1373,7 @@ MyControlsFactory.CheckBox.prototype.getValue = function(){
 //Установить статус CheckBox
 MyControlsFactory.CheckBox.prototype.setChecked = function(isChecked){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var check_box = dom[1].find("input");
 	
@@ -1474,12 +1492,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.ComboBox, MyControlsFactor
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.ComboBox.prototype.getName = function() {		
-	return StyleManager.STYLE.COMBOBOX;
+	return nsBuffer.StyleManager.STYLE.COMBOBOX;
 }
 
 //Создать ComboBox
 MyControlsFactory.ComboBox.prototype.create= function() {		
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id =MyControlsFactory. MyControls.GUID();
 		
@@ -1775,6 +1794,7 @@ MyControlsFactory.ComboBox.prototype.getKeyByValue = function(val){
 MyControlsFactory.ComboBox.prototype.close = function(){	
 	if (this._isExpand == true){
 		var dom = this.getJQUERYDOM();
+        var StyleManager = nsBuffer.StyleManager;
 					    	
 		StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR), 
@@ -1818,7 +1838,8 @@ MyControlsFactory.ComboBox.prototype.getValue = function(){
 	
 //Событие при клике мыши
 MyControlsFactory.ComboBox.prototype.mouseClick = function(opt, time){
-	var dom = this.getJQUERYDOM();	
+	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	if(this._isExpand == false){		
 		StyleManager.setGradient(dom[0], 
@@ -1854,6 +1875,7 @@ MyControlsFactory.ComboBox.prototype.mouseEnter = function(opt, time){
 //Событие при наведении мыши
 MyControlsFactory.ComboBox.prototype.mouseEnterText = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	dom[1].removeClass("textConteiner");	
 	dom[1].addClass("textConteiner_over");
@@ -1874,6 +1896,7 @@ MyControlsFactory.ComboBox.prototype.mouseOut = function(opt, time){
 //Событие при уходе мыши
 MyControlsFactory.ComboBox.prototype.mouseOutText = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	dom[1].addClass("textConteiner");	
 	dom[1].removeClass("textConteiner_over");
@@ -1969,12 +1992,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.ProgressBar, MyControlsFac
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.ProgressBar.prototype.getName = function() {		
-	return StyleManager.STYLE.PROGRESS_BAR;
+	return nsBuffer.StyleManager.STYLE.PROGRESS_BAR;
 }
 
 //Создать панель
 MyControlsFactory.ProgressBar.prototype.create = function(opt) {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -2128,7 +2152,7 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.ScrollPanel, MyControlsFac
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.ScrollPanel.prototype.getName = function() {		
-	return StyleManager.STYLE.SCROLL_PANEL;
+	return nsBuffer.StyleManager.STYLE.SCROLL_PANEL;
 }
 
 //Вернуть Z-index
@@ -2172,6 +2196,7 @@ MyControlsFactory.ScrollPanel.prototype.setCurPos = function(pos) {
 //Создать панель
 MyControlsFactory.ScrollPanel.prototype.create = function(opt) {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 	
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -2540,12 +2565,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.DatePicker, MyControlsFact
 
 //Вернуть имя контрола(убрать впоследствии)
 MyControlsFactory.DatePicker.prototype.getName = function() {		
-	return StyleManager.STYLE.DatePicker;
+	return nsBuffer.StyleManager.STYLE.DatePicker;
 }
 
 //Создать Метку
 MyControlsFactory.DatePicker.prototype.create = function() {		
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 	
@@ -2675,6 +2701,7 @@ MyControlsFactory.DatePicker.prototype.getDate = function(mode){
 //Событие при наведении мыши
 MyControlsFactory.DatePicker.prototype.mouseEnter = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	StyleManager.setBGOpacity(dom[0], 
 				 this.getStealValue(StyleManager.STYLE_NAMES.COLOR_OVER), 
@@ -2712,12 +2739,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.MapBrowser, MyControlsFact
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.MapBrowser.prototype.getName = function() {		
-	return StyleManager.STYLE.MAP_BROWSER;
+	return nsBuffer.StyleManager.STYLE.MAP_BROWSER;
 }
 
 //Создать панель
 MyControlsFactory.MapBrowser.prototype.create = function(opt) {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 	
 	var browser = $("<div></div>").
 			attr("id", this._map_id ).									     
@@ -2829,12 +2857,13 @@ MyControlsFactory.MyControls.extend(MyControlsFactory.TextArea, MyControlsFactor
 
 //ернуть имя контрола(убрать впоследствии)
 MyControlsFactory.TextArea.prototype.getName = function() {		
-	return StyleManager.STYLE.TEXTAREA;
+	return nsBuffer.StyleManager.STYLE.TEXTAREA;
 }
 
 //Создать TextArea
 MyControlsFactory.TextArea.prototype.create = function() {	
 	var _this = this;
+    var StyleManager = nsBuffer.StyleManager;
 		
 	var id = MyControlsFactory.MyControls.GUID();
 
@@ -2881,6 +2910,7 @@ MyControlsFactory.TextArea.prototype.create = function() {
 //Событие при наведении мыши
 MyControlsFactory.TextArea.prototype.mouseEnter = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 	
 	dom[1].removeClass("text_area");	
 	dom[1].addClass("text_area_over");	
@@ -2894,6 +2924,7 @@ MyControlsFactory.TextArea.prototype.mouseEnter = function(opt, time){
 //Событие при уходе мыши
 MyControlsFactory.TextArea.prototype.mouseOut = function(opt, time){
 	var dom = this.getJQUERYDOM();
+    var StyleManager = nsBuffer.StyleManager;
 		
 	dom[1].addClass("text_area");	
 	dom[1].removeClass("text_area_over");	
@@ -2912,3 +2943,8 @@ MyControlsFactory.TextArea.prototype.value = function(){
 MyControlsFactory.TextArea.prototype.setValue = function(val){			
 	return this._JQUERY_DOM[1].prop("value", val);		
 }
+
+window.nsBuffer = window.nsBuffer || {};
+nsBuffer.MyControlsFactory = MyControlsFactory;
+
+})();

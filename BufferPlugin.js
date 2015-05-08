@@ -1,19 +1,20 @@
 (function($){
 	var publicInterface = {
 	    pluginName: 'BufferPlugin', 
-	    afterViewer: function(params, map){	 	    
-	        MyControlsFactory.MyControls.setParent("flash");		
-			MyControlsFactory.MyControls.createStealManager({
-			name: "My styles",	
-			"styles_for_all":	[	
-					[StyleManager.STYLE_NAMES.COLOR,            "#387EAA"],	
-					[StyleManager.STYLE_NAMES.COLOR_MODAL,      "#CCCCCC"],	
+	    afterViewer: function(params, map){
+            var StyleManager = nsBuffer.StyleManager;
+	        nsBuffer.MyControlsFactory.MyControls.setParent("flash");
+			nsBuffer.MyControlsFactory.MyControls.createStealManager({
+			name: "My styles",
+			"styles_for_all":	[
+					[StyleManager.STYLE_NAMES.COLOR,            "#387EAA"],
+					[StyleManager.STYLE_NAMES.COLOR_MODAL,      "#CCCCCC"],
 					[StyleManager.STYLE_NAMES.COLOR_OVER_START, "#3F84EC"],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_END,   "#004AA8"],			
+					[StyleManager.STYLE_NAMES.COLOR_OVER_END,   "#004AA8"],
 					[StyleManager.STYLE_NAMES.OPACITY,          0.55],
-					[StyleManager.STYLE_NAMES.OPACITY_OVER,     0.85],	
-					[StyleManager.STYLE_NAMES.OPACITY_MODAL,     0.90],	
-					[StyleManager.STYLE_NAMES.COLOR_SHADOW,     "#666"],			
+					[StyleManager.STYLE_NAMES.OPACITY_OVER,     0.85],
+					[StyleManager.STYLE_NAMES.OPACITY_MODAL,     0.90],
+					[StyleManager.STYLE_NAMES.COLOR_SHADOW,     "#666"],
 					[StyleManager.STYLE_NAMES.SHADOW_SHIFTS,    [2,2,2]]
 			],
 			"styles":
@@ -107,12 +108,12 @@
 			
 			return gmxCore.loadScriptWithCheck([
                 {	//MyControlsFactory
-                    check: function(){ return (window.MyControlsFactory != undefined); },
-                    script: path + "js/MyControlsFactory.js?" + Math.random()
+                    check: function(){ return window.nsBuffer && window.nsBuffer.MyControlsFactory; },
+                    script: path + "js/MyControlsFactory.js?"
                 },
                 {   //StyleManager
-                    check: function(){ return (window.StyleManager != undefined); },
-                    script: path + "js/StyleManager.js?" + Math.random()
+                    check: function(){ return window.nsBuffer && window.nsBuffer.StyleManager; },
+                    script: path + "js/StyleManager.js?"
                 },
                 {   //Buffer
                     check: function(){ return false; },
@@ -120,19 +121,19 @@
                 },
                 {   //BufferManager
                     check: function(){ return false; },
-                    script: path + "js/BufferManager.js?" + Math.random()
+                    script: path + "js/BufferManager.js?"
                 },
                 {   //MathHelper
                     check: function(){ return false; },
-                    script: path + "js/MathHelper.js?" + Math.random()
+                    script: path + "js/MathHelper.js?"
                 },
                 {   //javascript.util
                     check: function(){ return false },
-                    script: path + "js/javascript.util.js?" + Math.random()
+                    script: path + "js/javascript.util.js?"
                 },
                 {   //jsts
                     check: function(){ return false },
-                    script: path + "js/jsts.js?" + Math.random()
+                    script: path + "js/jsts.js?"
                 }
             ]);
 		}//,

@@ -327,8 +327,9 @@ KorridorManager.prototype.clearProgressBar = function() {
 	}
 };
 
-KorridorManager.prototype.showGeometryPrimitives_2 = function() {	
+KorridorManager.prototype.showGeometryPrimitives_2 = function() {
 
+    var MyControlsFactory = nsBuffer.MyControlsFactory;
 	//trace("showGeometryPrimitives_2");
 
 	var _this = this;
@@ -336,7 +337,7 @@ KorridorManager.prototype.showGeometryPrimitives_2 = function() {
 	var shag = 35;			
 	var i = 0;
 	
-	var max_obj_count = StyleManager.MAX_COUNT_ELEMENTS;
+	var max_obj_count = nsBuffer.StyleManager.MAX_COUNT_ELEMENTS;
 	
 	var first_pos = 270;
 	var left_pos = 40;
