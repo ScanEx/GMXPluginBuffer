@@ -1,143 +1,151 @@
 (function($){
-	var publicInterface = {
-	    pluginName: 'BufferPlugin', 
-	    afterViewer: function(params, map){
-            var StyleManager = nsBuffer.StyleManager;
-	        nsBuffer.MyControlsFactory.MyControls.setParent("flash");
-			nsBuffer.MyControlsFactory.MyControls.createStealManager({
-			name: "My styles",
-			"styles_for_all":	[
-					[StyleManager.STYLE_NAMES.COLOR,            "#387EAA"],
-					[StyleManager.STYLE_NAMES.COLOR_MODAL,      "#CCCCCC"],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_START, "#3F84EC"],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_END,   "#004AA8"],
-					[StyleManager.STYLE_NAMES.OPACITY,          0.55],
-					[StyleManager.STYLE_NAMES.OPACITY_OVER,     0.85],
-					[StyleManager.STYLE_NAMES.OPACITY_MODAL,     0.90],
-					[StyleManager.STYLE_NAMES.COLOR_SHADOW,     "#666"],
-					[StyleManager.STYLE_NAMES.SHADOW_SHIFTS,    [2,2,2]]
-			],
-			"styles":
-				//Стили для PANEL 
-				[[StyleManager.STYLE.PANEL, [
-					[StyleManager.STYLE_NAMES.COLOR,            "#387EAA"],							
-					[StyleManager.STYLE_NAMES.OPACITY_DRAG,     0.25]]
-				],
-				//Стили для BUTTON
-				[StyleManager.STYLE.BUTTON, [						
-					//			
-				]],
-				//Стили для LABEL
-				[StyleManager.STYLE.LABEL, [				
-					[StyleManager.STYLE_NAMES.COLOR_OVER,       "#3F84EC"]]
-				],
-				//Стили для TEXTBOX
-				[StyleManager.STYLE.TEXTBOX, [				
-					//
-				]],
-				//Стили для CHECKBOX
-				[StyleManager.STYLE.CHECKBOX, [				
-					//
-				]],
-				//Стили для SCROLL_PANEL
-				[StyleManager.STYLE.SCROLL_PANEL, [				
-					[StyleManager.STYLE_NAMES.COLOR_SCROLL,     "#FF0000"],
-					[StyleManager.STYLE_NAMES.COLOR_BAR,        "#00FF00"],
-					[StyleManager.STYLE_NAMES.SHADOW_SHIFTS,    [1,1,1]],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_START, "#216AC4"],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_END,   "#0D2B51"],
-					[StyleManager.STYLE_NAMES.COLOR_BAR_START,  "#1F7022"],
-					[StyleManager.STYLE_NAMES.COLOR_BAR_END,    "#00FF00"]
-				]],
-				//Стили для PROGRESS_BAR
-				[StyleManager.STYLE.PROGRESS_BAR, [				
-					[StyleManager.STYLE_NAMES.COLOR,            "#90B7CF"],
-					[StyleManager.STYLE_NAMES.COLOR_BAR,        "#00FF00"],
-					[StyleManager.STYLE_NAMES.OPACITY,          0.66],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_START, "#00FF00"],
-					[StyleManager.STYLE_NAMES.COLOR_OVER_END,   "#1F7022"]
-				]],
-				//Стили для COMBOBOX
-				[StyleManager.STYLE.COMBOBOX, [				
-					//
-				]]]
-		});	
-			
-	        var korridorMngr = null;
-	        
-	        function setOnClickKorridor(){		        				        																					
-						if( korridorMngr == null){																		
-							korridorMngr = new KorridorManager({"map":    map,
-																"parent": "flash"});																																		
-						}	
-						
-						korridorMngr.showGeometryPrimitives_2();																																   																																																							
-			}
-			
-			function onCancelKorridor(){	
-			map.unfreeze();
-				map.setHandlers({ onMouseDown: null, onMouseMove: null, onMouseUp: null });		
-				gmxAPI._tools.standart.selectTool('move');
-				
-				if (korridorMngr !=null){
-					korridorMngr.removeAllObjects();				
-				}									
-			}	
-		
-			var buff_path = gmxCore.getModulePath("BufferPlugin");
-		
-	        var bufferTool = {
-				'key':             "buffer_tool",
-				'activeStyle':     {},
-				'regularStyle':    {'paddingLeft': '2px'},
-				'regularImageUrl': buff_path + "img/buffer_tool.png",
-				'activeImageUrl':  buff_path + "img/buffer_tool_a.png",
-				'onClick':         setOnClickKorridor,
-				'onCancel': 	   onCancelKorridor,
-				'hint': 		   gmxAPI.KOSMOSNIMKI_LOCALIZED("Буфер", "Korridor")
-			};
-		
-			gmxAPI._tools.standart.addTool( 'bufferTool', bufferTool);
-	    }
-	}	   
+    
+    var listTemplate = Handlebars.compile('<div class="geobuff-container">' +
+        '<table class="geobuff-params-container">' +
+            '<tr><td>Размер буфера (м):</td><td><input class="inputStyle geobuff-size" value="{{bufferSize}}"></td></tr>' +
+            '<tr><td>Точность:</td><td><input class="inputStyle geobuff-precision" value="{{precision}}"></td></tr>' +
+        '</table>' +
+        '<table class="geobuff-geom-container"><tbody>{{#rows}}' +
+            '<tr>' +
+                '<td><input type="checkbox" data-index="{{@index}}"{{#if selected}} selected{{/if}} class="geobuff-feature-checkbox"></td>' +
+                '<td data-index="{{@index}}" class="geobuff-feature-placeholder"></td>' +
+            '</tr>' +
+        '{{/rows}}</tbody></table>' +
+        '<span class="buttonLink geobuff-calculate">Рассчитать</span>' +
+        '<span class="buttonLink geobuff-save">Сохранить</span>' +
+        '<span class="buttonLink geobuff-remove">Удалить</span>' +
+    '</div>');
+    
+    var loadingScriptPromise,
+        precision = 36,
+        bufferSize = 3000;
+    
+    var publicInterface = {
+        pluginName: 'BufferPlugin', 
+        afterViewer: function(params, map){
+            var path = gmxCore.getModulePath('BufferPlugin'),
+                lmap = nsGmx.leafletMap;
+                
+            var bufferIcon = new L.Control.gmxIcon({
+                id: 'geobuffer',
+                regularImageUrl: path + 'img/buffer_tool.png',
+                activeImageUrl: path + 'img/buffer_tool_a.png',
+                togglable: true
+            });
+            
+            var bufferPanel = new leftMenu();
+            
+            bufferIcon.on('statechange', function() {
+                if (bufferIcon.options.isActive) {
 
-	gmxCore.addModule('BufferPlugin', publicInterface,
-	{
-		css: "css/BufferPlugin.css",
-		init: function(module, path){					
-			
-			return gmxCore.loadScriptWithCheck([
-                {	//MyControlsFactory
-                    check: function(){ return window.nsBuffer && window.nsBuffer.MyControlsFactory; },
-                    script: path + "js/MyControlsFactory.js?"
-                },
-                {   //StyleManager
-                    check: function(){ return window.nsBuffer && window.nsBuffer.StyleManager; },
-                    script: path + "js/StyleManager.js?"
-                },
-                {   //Buffer
-                    check: function(){ return false; },
-                    script: path + "js/Buffer.js"
-                },
-                {   //BufferManager
-                    check: function(){ return false; },
-                    script: path + "js/BufferManager.js?"
-                },
-                {   //MathHelper
-                    check: function(){ return false; },
-                    script: path + "js/MathHelper.js?"
-                },
-                {   //javascript.util
-                    check: function(){ return false },
-                    script: path + "js/javascript.util.js?"
-                },
-                {   //jsts
-                    check: function(){ return false },
-                    script: path + "js/jsts.js?"
+                    var deleteBufferGeometries = function() {
+                        _.chain(featureInfos).where({selected: true}).each(function(f) {
+                            if (f.bufferGeom) {
+                                lmap.removeLayer(f.bufferGeom);
+                                f.bufferGeom = null;
+                            }
+                        });
+                    }
+                    
+                    bufferPanel.createWorkCanvas('geobuffer', {
+                        path: ['Буфер геометрических объектов'],
+                        closeFunc: function() {
+                            deleteBufferGeometries();
+                            bufferIcon.setActive(false);
+                        }
+                    });
+                    
+                    $(bufferPanel.workCanvas).empty();
+                    
+                    var DrawingObjectCollection = gmxCore.getModule('DrawingObjects').DrawingObjectCollection,
+                        DrawingObjectInfoRow = gmxCore.getModule('DrawingObjects').DrawingObjectInfoRow;
+                    
+                    var featureInfos = lmap.gmxDrawing.getFeatures().map(function(feature) {
+                        return {
+                            feature: feature,
+                            bufferGeom: null,
+                            selected: false
+                        }
+                    });
+                    
+                    var ui = $(listTemplate({
+                        bufferSize: bufferSize,
+                        precision: precision,
+                        rows: featureInfos
+                    }));
+                    ui.find('.geobuff-feature-placeholder').each(function() {
+                        new DrawingObjectInfoRow(lmap, this, featureInfos[$(this).data('index')].feature, {
+                            allowDelete: false,
+                            editStyle: false
+                        });
+                    });
+                    
+                    ui.find('.geobuff-feature-checkbox').change(function() {
+                        var index = $(this).data('index'),
+                            bufferGeom = featureInfos[index].bufferGeom;
+                            
+                        featureInfos[index].selected = this.checked;
+                            
+                        if (bufferGeom) {
+                            lmap[this.checked ? 'addLayer' : 'removeLayer'](bufferGeom);
+                        }
+                    });
+                    
+                    ui.find('.geobuff-size').change(function() {
+                        bufferSize = this.value;
+                    });
+                    
+                    ui.find('.geobuff-precision').change(function() {
+                        precision = this.value;
+                    });
+                    
+                    ui.appendTo(bufferPanel.workCanvas);
+                    
+                    ui.find('.geobuff-calculate').click(function() {
+                        if (_.chain(featureInfos).pluck('selected').any().value()) {
+                            loadingScriptPromise = loadingScriptPromise ||gmxCore.loadScriptWithCheck([{
+                                check: function() {return window.buffer},
+                                script: path + 'js/turf-geobuffer.js'
+                            }]);
+                            
+                            loadingScriptPromise.then(function() {
+                                _.chain(featureInfos).where({selected: true}).each(function(f) {
+                                    var geoJSON = f.feature.toGeoJSON(),
+                                        size = +ui.find('.geobuff-size').val(),
+                                        precision = +ui.find('.geobuff-precision').val();
+                                        
+                                    if (f.bufferGeom) {
+                                        lmap.removeLayer(f.bufferGeom);
+                                    };
+                                    f.bufferGeom = L.geoJson(buffer(geoJSON, size/1000, 'kilometers', precision), {color: 'green', fillOpacity: 0.2, opacity: 1}).addTo(lmap);
+                                });
+                            })
+                        }
+                    });
+                    
+                    ui.find('.geobuff-save').click(function() {
+                        _.chain(featureInfos).where({selected: true}).each(function(f) {
+                            if (f.bufferGeom) {
+                                lmap.removeLayer(f.bufferGeom);
+                                lmap.gmxDrawing.addGeoJSON(f.bufferGeom);
+                                f.bufferGeom = null;
+                            }
+                        });
+                    });
+                    
+                    ui.find('.geobuff-remove').click(deleteBufferGeometries);
+                    
+                } else {
+                    bufferPanel.leftPanelItem.close();
                 }
-            ]);
-		}//,
-        //require: ['DateTimePeriodControl']
-	});
-	
+            })
+            
+            lmap.addControl(bufferIcon);
+        }
+    }       
+
+    gmxCore.addModule('BufferPlugin', publicInterface, {
+        css: "BufferPlugin.css"
+    });
+
 })(jQuery);
