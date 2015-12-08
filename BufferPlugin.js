@@ -13,6 +13,7 @@
         '{{/rows}}</tbody></table>' +
         '<span class="buttonLink geobuff-calculate">Рассчитать</span>' +
         '<span class="buttonLink geobuff-save">Сохранить</span>' +
+        '<span class="buttonLink geobuff-export-shp">Экспорт в shp</span>' +
         '<span class="buttonLink geobuff-remove">Удалить</span>' +
     '</div>');
     
@@ -131,6 +132,14 @@
                                 f.bufferGeom = null;
                             }
                         });
+                    });
+                    
+                    ui.find('.geobuff-export-shp').click(function() {
+                        var features = _.chain(featureInfos).where({selected: true}).map(function(f) {
+                            return f.bufferGeom ? f.bufferGeom.toGeoJSON().features : [];
+                        }).flatten().value();
+                        
+                        nsGmx.Utils.downloadGeometry(features);
                     });
                     
                     ui.find('.geobuff-remove').click(deleteBufferGeometries);
