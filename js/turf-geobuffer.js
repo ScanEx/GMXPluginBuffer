@@ -12,7 +12,7 @@ module.exports = function(feature, radius, units, resolution){
   if(!resolution) resolution = 36;
   var geom = feature.geometry
   if(geom.type === 'Point') {
-    return pointBuffer(feature, radius, units, resolution);
+    return pointBuffer(feature, radius, units, resolution).geom;
   } else if(geom.type === 'MultiPoint') {
     var buffers = [];
     geom.coordinates.forEach(function(coords) {
@@ -81,13 +81,26 @@ function segmentBuffer(bottom, top, radius, units, resolution) {
     return poly;
 }
 
+//polys is an array of objects with atributes 'action' and 'geom'
+//action can be 'union' or 'diff'
 function unionPolys (polys) {
-  var reader = new jsts.io.GeoJSONReader();
-  var jstsPolys = polys.map(function(poly){
-    return reader.read(JSON.stringify(poly.geometry));
-  })
+  var reader = new jsts.io.GeoJSONReader(),
+    jstsPolysToUnion = [],
+    jstsPolysToDiff = [];
+
+  polys.forEach(function(poly){
+    var jstsPoly = reader.read(JSON.stringify(poly.geom.geometry));
+    if (poly.action === 'union') {
+        jstsPolysToUnion.push(jstsPoly);
+    } else {
+        jstsPolysToDiff.push(jstsPoly);
+    }
+  });
   
-  var buffer = jsts.operation.union.CascadedPolygonUnion.union(jstsPolys);
+  var union = jsts.operation.union.CascadedPolygonUnion.union(jstsPolysToUnion);
+  var diff = jsts.operation.union.CascadedPolygonUnion.union(jstsPolysToDiff);
+  
+  var buffer = diff ? union.difference(diff) : union;
   
   var parser = new jsts.io.GeoJSONParser();
   return {
@@ -106,7 +119,7 @@ function pointBuffer (pt, radius, units, resolution) {
   if((ring[0][0] !== ring[ring.length-1][0]) && (ring[0][1] != ring[ring.length-1][1])) {
     ring.push([ring[0][0], ring[0][1]]);
   }
-  return polygon([ring])
+  return {action: 'union', geom: polygon([ring])};
 }
 
 function lineBuffer (line, radius, units, resolution) {
@@ -121,7 +134,7 @@ function lineBuffer (line, radius, units, resolution) {
     var bottom = point(segments[i][0][0], segments[i][0][1]);
     var top = point(segments[i][1][0], segments[i][1][1]);
 
-    polys.push(segmentBuffer(top, bottom, radius, units, resolution));
+    polys.push({action: 'union', geom: segmentBuffer(top, bottom, radius, units, resolution)});
   }
   
   return polys;
@@ -129,13 +142,21 @@ function lineBuffer (line, radius, units, resolution) {
 
 function polygonBuffer(poly, radius, units, resolution) {
     var geom = poly.geometry,
+        action = radius < 0 ? 'diff' : 'union',
         buffers = [];
+        
+    radius = Math.abs(radius);
         
     geom.coordinates.forEach(function(lineCoords){
       var line = {geometry: {type: 'LineString', coordinates: lineCoords}};
-      buffers = buffers.concat(lineBuffer(line, radius, units, resolution));
+      buffers = buffers.concat(lineBuffer(line, radius, units, resolution).map(function(segmentBuffer) {
+          return {
+              action: action,
+              geom: segmentBuffer.geom
+          }
+      }));
     });
-    buffers.push(poly);
+    buffers.push({action: 'union', geom: poly});
     return buffers;
 }
 },{"./javascript.util.min.js":2,"./jsts.js":3,"turf-bearing":4,"turf-destination":5,"turf-featurecollection":6,"turf-point":7,"turf-polygon":8}],2:[function(require,module,exports){
