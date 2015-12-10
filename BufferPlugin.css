@@ -25,3 +25,15 @@
 .geobuff-calculate, .geobuff-save, .geobuff-export-shp {
     margin-right: 10px;
 }
+
+.geobuff-precision-label {
+    border-bottom: 1px dotted #808080;
+}
+
+.geobuff-progressbar.ui-progressbar{
+    height: 1em;
+}
+
+.geobuff-progressbar .ui-progressbar-value {
+    background: grey;
+}

@@ -1,9 +1,35 @@
 (function($){
+    _translationsHash.addtext('rus', {BufferPlugin: {
+        panelTitle: 'Буферные зоны',
+        sizeLabel : 'Размер буфера (м)',
+        precisionLabel : 'Точность',
+        precisionHint: 'Количество точек на полуокружности',
+        calcButtonTitle: 'Рассчитать',
+        exportButtonTitle: 'Экспорт в shp',
+        removeButtonTitle: 'Удалить'
+    }});
+
+    _translationsHash.addtext('eng', {BufferPlugin: {
+        panelTitle: 'Buffer Areas',
+        sizeLabel : 'Buffer size (m)',
+        precisionLabel : 'Precision',
+        precisionHint: 'Number of points at semicircle',
+        calcButtonTitle: 'Calculate',
+        exportButtonTitle: 'Export to shp',
+        removeButtonTitle: 'Remove'
+    }});
+
     
     var listTemplate = Handlebars.compile('<div class="geobuff-container">' +
         '<table class="geobuff-params-container">' +
-            '<tr><td>Размер буфера (м):</td><td><input class="inputStyle geobuff-size" value="{{bufferSize}}"></td></tr>' +
-            '<tr><td>Точность:</td><td><input class="inputStyle geobuff-precision" value="{{precision}}"></td></tr>' +
+            '<tr>' +
+                '<td>{{i "BufferPlugin.sizeLabel"}}</td>' +
+                '<td><input class="inputStyle geobuff-size" value="{{bufferSize}}"></td>' +
+            '</tr>' +
+            '<tr>' +
+                '<td><span class="geobuff-precision-label">{{i "BufferPlugin.precisionLabel"}}</span></td>' +
+                '<td><input class="inputStyle geobuff-precision" value="{{precision}}"></td>' +
+            '</tr>' +
         '</table>' +
         '<table class="geobuff-geom-container"><tbody>{{#rows}}' +
             '<tr>' +
@@ -11,10 +37,15 @@
                 '<td data-index="{{@index}}" class="geobuff-feature-placeholder"></td>' +
             '</tr>' +
         '{{/rows}}</tbody></table>' +
-        '<span class="buttonLink geobuff-calculate">Рассчитать</span>' +
-        '<span class="buttonLink geobuff-save">Сохранить</span>' +
-        '<span class="buttonLink geobuff-export-shp">Экспорт в shp</span>' +
-        '<span class="buttonLink geobuff-remove">Удалить</span>' +
+        
+        '<div class="geobuff-actions">' +
+            '<span class="buttonLink geobuff-calculate">{{i "BufferPlugin.calcButtonTitle"}}</span>' +
+            '<span class="buttonLink geobuff-export-shp">{{i "BufferPlugin.exportButtonTitle"}}</span>' +
+            '<span class="buttonLink geobuff-remove">{{i "BufferPlugin.removeButtonTitle"}}</span>' +
+        '</div>' +
+        '<div class="geobuff-progress-container" style="display:none">' +
+            '<div class="geobuff-progressbar"></div>' +
+        '</div>' +
     '</div>');
     
     var loadingScriptPromise,
@@ -49,7 +80,7 @@
                     }
                     
                     bufferPanel.createWorkCanvas('geobuffer', {
-                        path: ['Буфер геометрических объектов'],
+                        path: [_gtxt('BufferPlugin.panelTitle')],
                         closeFunc: function() {
                             deleteBufferGeometries();
                             bufferIcon.setActive(false);
@@ -105,33 +136,61 @@
                     ui.find('.geobuff-calculate').click(function() {
                         if (_.chain(featureInfos).pluck('selected').any().value()) {
                             loadingScriptPromise = loadingScriptPromise ||gmxCore.loadScriptWithCheck([{
-                                check: function() {return window.buffer},
-                                script: path + 'js/turf-geobuffer.js'
+                                check: function() {return window.GeoBuffer;},
+                                script: path + 'js/dist/turf-geobuffer.js'
                             }]);
                             
                             loadingScriptPromise.then(function() {
-                                _.chain(featureInfos).where({selected: true}).each(function(f) {
-                                    var geoJSON = f.feature.toGeoJSON(),
-                                        size = +ui.find('.geobuff-size').val(),
-                                        precision = +ui.find('.geobuff-precision').val();
-                                        
+                                ui.find('.geobuff-progress-container').toggle();
+                                ui.find('.geobuff-actions').toggle();
+                                
+                                ui.find('.geobuff-progressbar').progressbar({
+                                    max: 1.0,
+                                    value: 0.0
+                                });
+                                
+                                var size = +ui.find('.geobuff-size').val(),
+                                    precision = +ui.find('.geobuff-precision').val();
+                                
+                                var geoBuffers = _.chain(featureInfos).where({selected: true}).map(function(f) {
+                                    var geoJSON = f.feature.toGeoJSON();
+                                    
                                     if (f.bufferGeom) {
                                         lmap.removeLayer(f.bufferGeom);
                                     };
-                                    f.bufferGeom = L.geoJson(buffer(geoJSON, size/1000, 'kilometers', precision), {color: 'green', fillOpacity: 0.2, opacity: 1}).addTo(lmap);
-                                });
+                                    
+                                    var geoBuff = new GeoBuffer(geoJSON);
+                                    
+                                    return {
+                                        geoBuffer: geoBuff,
+                                        feature: f
+                                    }
+                                }).value();
+                                
+                                var totalPoints = geoBuffers.reduce(function(sum, item) {return sum + item.geoBuffer.getNumberOfPoints();}, 0),
+                                    calculatedPoints = 0;
+                                
+                                var nextBuffer = function() {
+                                    if (geoBuffers.length === 0) {
+                                        ui.find('.geobuff-progress-container').toggle();
+                                        ui.find('.geobuff-actions').toggle();
+                                        return;
+                                    }
+                                    
+                                    var curBuffer = geoBuffers.pop();
+                                    curBuffer.geoBuffer.calculateBuffer(size/1000, 'kilometers', precision, function(buffer) {
+                                        curBuffer.feature.bufferGeom = L.geoJson(buffer, {color: 'green', fillOpacity: 0.2, opacity: 1}).addTo(map);
+                                        calculatedPoints += curBuffer.geoBuffer.getNumberOfPoints();
+                                        
+                                        ui.find('.geobuff-progressbar').progressbar('value', calculatedPoints/totalPoints);
+                                        
+                                        nextBuffer();
+                                    })
+                                }
+                                
+                                nextBuffer();
                             })
                         }
-                    });
-                    
-                    ui.find('.geobuff-save').click(function() {
-                        _.chain(featureInfos).where({selected: true}).each(function(f) {
-                            if (f.bufferGeom) {
-                                lmap.removeLayer(f.bufferGeom);
-                                lmap.gmxDrawing.addGeoJSON(f.bufferGeom);
-                                f.bufferGeom = null;
-                            }
-                        });
                     });
                     
                     ui.find('.geobuff-export-shp').click(function() {
@@ -143,6 +202,12 @@
                     });
                     
                     ui.find('.geobuff-remove').click(deleteBufferGeometries);
+                    
+                    ui.find('.geobuff-precision-label').popover({
+                        content: _gtxt('BufferPlugin.precisionHint'), 
+                        trigger: 'hover',
+                        placement: 'top'
+                    });
                     
                 } else {
                     bufferPanel.leftPanelItem.close();
