@@ -104,7 +104,7 @@ var publicInterface = {
             
         drawingFeaturesCollection = drawingFeaturesCollection || new DrawingFeaturesCollection(lmap);
             
-        var bufferIcon = new L.Control.gmxIcon({
+        var bufferIcon = L.control.gmxIcon({
             id: 'geobuffer',
             regularImageUrl: path + 'img/buffer_tool.png',
             activeImageUrl: path + 'img/buffer_tool_a.png',
